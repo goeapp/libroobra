@@ -620,8 +620,15 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;margin-bottom:18px">
         <div class="card">
-          <div class="card-title">Documentos por trimestre</div>
-          <div class="chart-nav">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-title" style="margin-bottom:0">Documentos registrados</div>
+            <div style="display:flex;gap:4px">
+              <button class="hm-btn active" id="chart-btn-acum" onclick="setChartMode('acum')">Acumulado</button>
+              <button class="hm-btn" id="chart-btn-trim" onclick="setChartMode('trim')">Trimestral</button>
+            </div>
+          </div>
+          <!-- Nav trimestral — oculto por defecto -->
+          <div class="chart-nav" id="chart-nav-trim" style="display:none">
             <button class="chart-nav-btn" onclick="chartNavegar(-1)">◀</button>
             <span class="chart-nav-label" id="chart-trimestre-label">—</span>
             <button class="chart-nav-btn" onclick="chartNavegar(1)">▶</button>
@@ -640,15 +647,15 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       </div>
       <div class="card">
         <div class="heatmap-header">
-          <div class="card-title" style="margin-bottom:0">Actividad anual</div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <select class="hm-yr-sel" id="hm-yr-sel" onchange="renderHeatmap()" style="display:none"></select>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="card-title" style="margin-bottom:0">Actividad anual</div>
             <div class="heatmap-modes">
               <button class="hm-btn active" id="hm-todos" onclick="setHmMode('todos')">Todos</button>
               <button class="hm-btn" id="hm-os" onclick="setHmMode('os')">OS</button>
               <button class="hm-btn" id="hm-np" onclick="setHmMode('np')">NP</button>
               <button class="hm-btn" id="hm-rm" onclick="setHmMode('rm')">RM</button>
             </div>
+            <select class="hm-yr-sel" id="hm-yr-sel" onchange="renderHeatmap()" style="display:none"></select>
           </div>
         </div>
         <div class="heatmap-scroll">
@@ -1057,31 +1064,67 @@ async function cargarDashboard() {
     renderUltimos5(data.ultimos5);
     _chartPorMes = data.porMes || {};
     _heatPorDia  = data.porDia  || {};
-    _chartTrimOffset = 0;  // reset al mes actual
-    renderChartTrim();
+    _chartTrimOffset = 0;
+    renderChartAcum();   // default: acumulado
     renderHeatmap();
   } catch (e) {
     mostrarToast('⚠ Error dashboard: ' + e.message);
   } finally { spinner(false); }
 }
 
-/* ── GRÁFICO TRIMESTRAL — Chart.js (fix c) ── */
-let _chartPorMes = {}, _chartTrimOffset = 0, _chartInst = null;
+/* ── GRÁFICO — Chart.js con selector Acumulado / Trimestral (fix b/c) ── */
+let _chartPorMes = {}, _chartTrimOffset = 0, _chartInst = null, _chartMode = 'acum';
+
+function setChartMode(mode) {
+  _chartMode = mode;
+  document.getElementById('chart-btn-acum').classList.toggle('active', mode === 'acum');
+  document.getElementById('chart-btn-trim').classList.toggle('active', mode === 'trim');
+  document.getElementById('chart-nav-trim').style.display = mode === 'trim' ? 'flex' : 'none';
+  if (mode === 'trim') renderChartTrim();
+  else                 renderChartAcum();
+}
 
 function chartNavegar(dir) {
   _chartTrimOffset += dir;
   renderChartTrim();
 }
 
+function renderChartAcum() {
+  // Suma total por tipo sobre todos los meses disponibles
+  let totalOS = 0, totalNP = 0, totalRM = 0;
+  Object.values(_chartPorMes).forEach(v => {
+    totalOS += v.OS; totalNP += v.NP; totalRM += v.RM;
+  });
+  const ctx = document.getElementById('chart-trim').getContext('2d');
+  if (_chartInst) _chartInst.destroy();
+  _chartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['OS', 'NP', 'RM'],
+      datasets: [{
+        data: [totalOS, totalNP, totalRM],
+        backgroundColor: ['#d97706', '#0891b2', '#64748b'],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' documentos' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 12 }, color: '#1e293b' } },
+        y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { font: { family: 'DM Sans', size: 11 }, precision: 0 } }
+      }
+    }
+  });
+}
+
 function renderChartTrim() {
   const hoy    = new Date();
-  const mesBase = hoy.getMonth() + _chartTrimOffset * 3;  // puede ser negativo
-  // Calcular año/mes del primer mes del trimestre visible
-  const base   = new Date(hoy.getFullYear(), mesBase - (mesBase % 3 < 0 ? (3 + mesBase % 3) : mesBase % 3), 1);
-  // Ajustar para que sea inicio de trimestre natural
   const qStart = new Date(hoy.getFullYear(), Math.floor((hoy.getMonth() + _chartTrimOffset * 3) / 3) * 3, 1);
-
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const meses  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const labels = [], dataOS = [], dataNP = [], dataRM = [];
 
   for (let i = 0; i < 3; i++) {
@@ -1093,13 +1136,13 @@ function renderChartTrim() {
   }
 
   const trimNum = Math.floor(qStart.getMonth() / 3) + 1;
-  document.getElementById('chart-trimestre-label').textContent =
-    'T' + trimNum + ' ' + qStart.getFullYear();
+  document.getElementById('chart-trimestre-label').textContent = 'T' + trimNum + ' ' + qStart.getFullYear();
 
-  // Deshabilitar ▶ si estamos en el trimestre actual o futuro
+  // Deshabilitar ▶ en trimestre actual
   const hoyQ = Math.floor(hoy.getMonth() / 3);
   const curQ = Math.floor(qStart.getMonth() / 3);
-  document.querySelectorAll('.chart-nav-btn')[1].disabled =
+  const btns = document.querySelectorAll('.chart-nav-btn');
+  if (btns[1]) btns[1].disabled =
     qStart.getFullYear() > hoy.getFullYear() ||
     (qStart.getFullYear() === hoy.getFullYear() && curQ >= hoyQ);
 
