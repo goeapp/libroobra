@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4.1.html — LibroObra V4.1.0 -->
-<!-- Cambios v4.1:
-  a) Tabla usa ancho completo sin max-width restrictivo
-  b) UX/tokens alineados con MdT (Bebas Neue + DM Sans, paleta dark header, accent amber)
-  c) GAS recupera URLs de adjuntos V3 al hacer click en 📎
-  d) FAB de carga flotante — "Carga" eliminado del topbar
-  e) Preview adjuntos — Etapa II (anotado)
-  f) Filtros de columna independientes (DataTables columns().search) + búsqueda global simultánea
+<!-- index_libroobra_v4_2.html — LibroObra V4.2.0 -->
+<!-- Cambios v4.2:
+  a) Heatmap anual de actividad en Dashboard (adaptado de ClimaObra)
+  b) Mini-modal de línea de tiempo para historial de ediciones
+  c) Gráfico trimestral con Chart.js (reemplaza Google Charts) + nav ◀ ▶
+  d) Botón "+ Nueva" en header de Comunicaciones reemplaza FAB flotante
+  e) Íconos SVG monocromáticos (reemplaza emojis 📎)
+  f) Modal Nueva Comunicación: Asunto full-width, fecha sin futuro, Resumen obligatorio, UX mejorada
+  g) Fix: columna Estado mostraba FechaHora (destructuring incorrecto)
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.1.0</title>
+<title>LibroObra V4.2.0</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +27,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/datetime-moment.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <style>
 /* ══════════════════════════════════════════════
@@ -329,22 +330,6 @@ table.dataTable tbody tr.row-anulada td { opacity: .45; }
 .btn-sm { padding: 5px 11px; font-size: .75rem; }
 
 /* ══════════════════════════════════════════════
-   FAB — Carga de documentos (fix d)
-══════════════════════════════════════════════ */
-#fab-carga {
-  display: none; /* se muestra solo si perfil = usuario */
-  position: fixed; bottom: 28px; right: 28px;
-  width: 54px; height: 54px; border-radius: 50%;
-  background: var(--accent); color: #fff;
-  border: none; font-size: 1.6rem; line-height: 1;
-  box-shadow: 0 4px 16px rgba(217,119,6,.45);
-  z-index: 200; align-items: center; justify-content: center;
-  transition: transform .15s, box-shadow .15s; cursor: pointer;
-}
-#fab-carga:hover  { transform: scale(1.08); box-shadow: 0 6px 20px rgba(217,119,6,.55); }
-#fab-carga:active { transform: scale(.96); }
-
-/* ══════════════════════════════════════════════
    MODAL
 ══════════════════════════════════════════════ */
 .modal-overlay {
@@ -485,6 +470,75 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   z-index: 900; white-space: nowrap; max-width: 90vw;
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════════════
+   HEATMAP ANUAL — adaptado de ClimaObra (fix a)
+══════════════════════════════════════════════ */
+.heatmap-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px; }
+.heatmap-modes  { display:flex; gap:6px; flex-wrap:wrap; }
+.hm-btn { padding:3px 11px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:.68rem; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .18s; }
+.hm-btn.active  { background:var(--accent2); color:#fff; border-color:var(--accent2); }
+.hm-yr-sel { border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px 8px; font-size:.72rem; font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); }
+.heatmap-scroll { overflow-x:auto; padding-bottom:4px; }
+.heatmap-wrap   { display:flex; gap:3px; min-width:max-content; }
+.hm-day-labels  { display:flex; flex-direction:column; gap:3px; margin-top:14px; margin-right:4px; }
+.hm-day-lbl     { font-size:.52rem; color:var(--muted); height:12px; line-height:12px; }
+.hm-month       { display:flex; flex-direction:column; }
+.hm-month-label { font-size:.56rem; color:var(--muted); text-align:center; margin-bottom:3px; height:11px; }
+.hm-weeks { display:flex; gap:3px; }
+.hm-week  { display:flex; flex-direction:column; gap:3px; }
+.hm-day   { width:12px; height:12px; border-radius:2px; background:var(--border); cursor:pointer; transition:transform .1s; position:relative; }
+.hm-day:hover { transform:scale(1.5); z-index:10; }
+.hm-nodata { background:#e2e8f0 !important; opacity:.5; }
+.hm-0  { background:#dcfce7; }
+.hm-1  { background:#86efac; }
+.hm-2  { background:#22c55e; }
+.hm-3  { background:#15803d; }
+.hm-os { background:#d97706; }
+.hm-np { background:#0891b2; }
+.hm-rm { background:#475569; }
+#hm-tooltip {
+  position:fixed; background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:7px 11px; font-size:.7rem; pointer-events:none;
+  opacity:0; transition:opacity .15s; z-index:600; white-space:nowrap;
+  line-height:1.6; box-shadow:0 4px 12px rgba(0,0,0,.1); color:var(--text);
+}
+
+/* ══════════════════════════════════════════════
+   GRÁFICO TRIMESTRAL Chart.js — nav ◀ ▶ (fix c)
+══════════════════════════════════════════════ */
+.chart-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.chart-nav-label { font-size:.78rem; font-weight:600; color:var(--text); }
+.chart-nav-btn { background:none; border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px 10px; font-size:.78rem; color:var(--muted); cursor:pointer; transition:all .15s; font-family:inherit; }
+.chart-nav-btn:hover { border-color:var(--accent2); color:var(--accent2); }
+
+/* ══════════════════════════════════════════════
+   MINI-MODAL HISTORIAL — línea de tiempo (fix b)
+══════════════════════════════════════════════ */
+.timeline { display:flex; flex-direction:column; gap:0; padding:4px 0; }
+.tl-item  { display:flex; gap:12px; padding-bottom:16px; position:relative; }
+.tl-item:last-child { padding-bottom:0; }
+.tl-item:not(:last-child)::before {
+  content:''; position:absolute; left:15px; top:24px;
+  width:1px; bottom:0; background:var(--border);
+}
+.tl-dot {
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.6rem; font-weight:700; border:2px solid transparent;
+}
+.tl-dot.activo  { background:var(--activo-bg);  color:var(--activo-fg);  border-color:#86efac; }
+.tl-dot.anulado { background:var(--anulado-bg); color:var(--anulado-fg); border-color:#fca5a5; }
+.tl-dot.aviso   { background:var(--aviso-bg);   color:var(--aviso-fg);   border-color:#fde68a; }
+.tl-body  { flex:1; padding-top:4px; }
+.tl-fecha { font-size:.68rem; color:var(--muted); }
+.tl-estado { font-size:.78rem; font-weight:600; margin-bottom:2px; }
+.tl-obs   { font-size:.75rem; color:var(--muted); font-style:italic; }
+.tl-usr   { font-size:.67rem; color:var(--muted); margin-top:2px; }
+
+/* badge clickeable con ícono historial */
+.badge-with-hist { cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+.badge-with-hist:hover { opacity:.8; }
 </style>
 </head>
 <body>
@@ -494,7 +548,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.1.0 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.2.0 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -532,7 +586,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.1.0</span>
+    <span class="hdr-version">V4.2.0</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -564,10 +618,15 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <div class="stat-sub"  id="dash-rm-sub"></div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;margin-bottom:18px">
         <div class="card">
-          <div class="card-title">Documentos registrados</div>
-          <div id="chart-container" style="min-height:200px"></div>
+          <div class="card-title">Documentos por trimestre</div>
+          <div class="chart-nav">
+            <button class="chart-nav-btn" onclick="chartNavegar(-1)">◀</button>
+            <span class="chart-nav-label" id="chart-trimestre-label">—</span>
+            <button class="chart-nav-btn" onclick="chartNavegar(1)">▶</button>
+          </div>
+          <div style="position:relative;height:180px"><canvas id="chart-trim"></canvas></div>
         </div>
         <div class="card">
           <div class="card-title">Últimos registros</div>
@@ -579,6 +638,26 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           </table>
         </div>
       </div>
+      <div class="card">
+        <div class="heatmap-header">
+          <div class="card-title" style="margin-bottom:0">Actividad anual</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <select class="hm-yr-sel" id="hm-yr-sel" onchange="renderHeatmap()" style="display:none"></select>
+            <div class="heatmap-modes">
+              <button class="hm-btn active" id="hm-todos" onclick="setHmMode('todos')">Todos</button>
+              <button class="hm-btn" id="hm-os" onclick="setHmMode('os')">OS</button>
+              <button class="hm-btn" id="hm-np" onclick="setHmMode('np')">NP</button>
+              <button class="hm-btn" id="hm-rm" onclick="setHmMode('rm')">RM</button>
+            </div>
+          </div>
+        </div>
+        <div class="heatmap-scroll">
+          <div style="display:flex">
+            <div class="hm-day-labels" id="hm-day-labels"></div>
+            <div class="heatmap-wrap" id="heatmap"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- COMUNICACIONES -->
@@ -586,6 +665,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       <div class="sec-header">
         <div class="sec-title"><div class="sec-title-dot"></div>Comunicaciones</div>
         <div class="sec-actions">
+          <button id="btn-nueva-com" class="btn btn-primary btn-sm" onclick="abrirModalCarga()" style="display:none">+ Nueva</button>
           <button class="btn btn-secondary btn-sm" onclick="cargarComunicaciones()">↻ Actualizar</button>
           <button class="btn btn-secondary btn-sm" onclick="exportarExcel()">↓ Excel</button>
         </div>
@@ -642,9 +722,6 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   </div><!-- /main-content -->
 </div><!-- /app -->
 
-<!-- FAB carga (fix d) -->
-<button id="fab-carga" onclick="abrirModalCarga()" title="Nueva comunicación">+</button>
-
 <!-- MODAL EDITAR -->
 <div class="modal-overlay" id="modal-editar">
   <div class="modal">
@@ -697,13 +774,18 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Fecha <span class="req">*</span></label><input type="date" class="form-control" id="carga-fecha"></div>
+      </div>
+      <div class="form-row full">
         <div class="form-group"><label class="form-label">Asunto <span class="req">*</span></label><input type="text" class="form-control" id="carga-asunto" placeholder="Tema del documento"></div>
       </div>
       <div class="form-row full">
-        <div class="form-group"><label class="form-label">Resumen</label><textarea class="form-control" id="carga-resumen" rows="2" placeholder="Descripción breve (opcional)"></textarea></div>
+        <div class="form-group"><label class="form-label">Resumen <span class="req">*</span></label><textarea class="form-control" id="carga-resumen" rows="2" placeholder="Descripción breve del documento"></textarea></div>
       </div>
       <div class="form-row full">
         <div class="form-group"><label class="form-label">Etiquetas</label><div class="etiquetas-wrap" id="etiquetas-wrap"></div></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="carga-obs" rows="2" placeholder="Notas adicionales (opcional)"></textarea></div>
       </div>
       <div class="form-row full">
         <div class="form-group">
@@ -711,15 +793,12 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <div class="file-zone" id="file-zone"
                onclick="document.getElementById('file-input').click()"
                ondragover="fileDragOver(event)" ondrop="fileDrop(event)" ondragleave="fileDragLeave()">
-            <div class="file-zone-icon">📎</div>
+            <div class="file-zone-icon"><svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M13.5 7.5 7.5 13.5a4.243 4.243 0 0 1-6-6l7-7a2.828 2.828 0 0 1 4 4l-7 7a1.414 1.414 0 0 1-2-2l6-6"/></svg></div>
             <div class="file-zone-text">Hacé clic o arrastrá el archivo aquí</div>
             <div class="file-zone-name" id="file-name" style="display:none"></div>
           </div>
           <input type="file" id="file-input" onchange="fileSeleccionado(this)">
         </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="carga-obs" rows="2" placeholder="Notas adicionales (opcional)"></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -781,6 +860,20 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 
 <div id="spinner"><div class="spinner-ring"></div></div>
 <div id="toast"></div>
+<div id="hm-tooltip"></div>
+
+<!-- MODAL HISTORIAL (fix b) -->
+<div class="modal-overlay" id="modal-historial">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-hist-titulo">Historial</span>
+      <button class="modal-close" onclick="cerrarModal('modal-historial')">×</button>
+    </div>
+    <div class="modal-body" id="modal-hist-body" style="min-height:80px">
+      <div style="color:var(--muted);text-align:center;padding:20px">Cargando…</div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════
      JAVASCRIPT
@@ -788,10 +881,16 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 <script>
 'use strict';
 
+/* ── ÍCONOS SVG monocromáticos (fix e) ── */
+const ICO = {
+  clip: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 7.5 7.5 13.5a4.243 4.243 0 0 1-6-6l7-7a2.828 2.828 0 0 1 4 4l-7 7a1.414 1.414 0 0 1-2-2l6-6"/></svg>`,
+  history: `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><polyline points="8,5 8,8 10,10"/></svg>`
+};
+
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.1.0';
+const VERSION   = 'V4.2.0';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -894,9 +993,9 @@ async function iniciarApp() {
   document.getElementById('hdr-name').textContent = u.nombre;
   document.getElementById('hdr-obra').textContent = u.obra + ' · ' + u.obraDesc;
 
-  // FAB visible solo para usuario
+  // Botón "Nueva" en Comunicaciones — visible solo para usuario
   if (u.perfil === 'usuario') {
-    document.getElementById('fab-carga').style.display = 'flex';
+    document.getElementById('btn-nueva-com').style.display = 'inline-flex';
     cargarCatalogos();
   }
   if (u.perfil === 'administrador') {
@@ -956,13 +1055,223 @@ async function cargarDashboard() {
     document.getElementById('dash-np-sub').textContent = data.ultimos30.NP + ' en últimos 30 días';
     document.getElementById('dash-rm-sub').textContent = data.ultimos30.RM + ' en últimos 30 días';
     renderUltimos5(data.ultimos5);
-    renderGrafico(data.totalOS, data.totalNP, data.totalRM);
+    _chartPorMes = data.porMes || {};
+    _heatPorDia  = data.porDia  || {};
+    _chartTrimOffset = 0;  // reset al mes actual
+    renderChartTrim();
+    renderHeatmap();
   } catch (e) {
     mostrarToast('⚠ Error dashboard: ' + e.message);
   } finally { spinner(false); }
 }
 
-function renderUltimos5(items) {
+/* ── GRÁFICO TRIMESTRAL — Chart.js (fix c) ── */
+let _chartPorMes = {}, _chartTrimOffset = 0, _chartInst = null;
+
+function chartNavegar(dir) {
+  _chartTrimOffset += dir;
+  renderChartTrim();
+}
+
+function renderChartTrim() {
+  const hoy    = new Date();
+  const mesBase = hoy.getMonth() + _chartTrimOffset * 3;  // puede ser negativo
+  // Calcular año/mes del primer mes del trimestre visible
+  const base   = new Date(hoy.getFullYear(), mesBase - (mesBase % 3 < 0 ? (3 + mesBase % 3) : mesBase % 3), 1);
+  // Ajustar para que sea inicio de trimestre natural
+  const qStart = new Date(hoy.getFullYear(), Math.floor((hoy.getMonth() + _chartTrimOffset * 3) / 3) * 3, 1);
+
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const labels = [], dataOS = [], dataNP = [], dataRM = [];
+
+  for (let i = 0; i < 3; i++) {
+    const d   = new Date(qStart.getFullYear(), qStart.getMonth() + i, 1);
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    labels.push(meses[d.getMonth()] + ' ' + d.getFullYear());
+    const v = _chartPorMes[key] || { OS: 0, NP: 0, RM: 0 };
+    dataOS.push(v.OS); dataNP.push(v.NP); dataRM.push(v.RM);
+  }
+
+  const trimNum = Math.floor(qStart.getMonth() / 3) + 1;
+  document.getElementById('chart-trimestre-label').textContent =
+    'T' + trimNum + ' ' + qStart.getFullYear();
+
+  // Deshabilitar ▶ si estamos en el trimestre actual o futuro
+  const hoyQ = Math.floor(hoy.getMonth() / 3);
+  const curQ = Math.floor(qStart.getMonth() / 3);
+  document.querySelectorAll('.chart-nav-btn')[1].disabled =
+    qStart.getFullYear() > hoy.getFullYear() ||
+    (qStart.getFullYear() === hoy.getFullYear() && curQ >= hoyQ);
+
+  const ctx = document.getElementById('chart-trim').getContext('2d');
+  if (_chartInst) _chartInst.destroy();
+  _chartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'OS', data: dataOS, backgroundColor: '#d97706', borderRadius: 4 },
+        { label: 'NP', data: dataNP, backgroundColor: '#0891b2', borderRadius: 4 },
+        { label: 'RM', data: dataRM, backgroundColor: '#64748b', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 11 }, boxWidth: 12, padding: 10 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } },
+        y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { font: { family: 'DM Sans', size: 11 }, precision: 0 } }
+      }
+    }
+  });
+}
+
+/* ── HEATMAP ANUAL (fix a) ── */
+let _heatPorDia = {}, _hmMode = 'todos';
+
+function setHmMode(mode) {
+  _hmMode = mode;
+  document.querySelectorAll('.hm-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('hm-' + mode).classList.add('active');
+  renderHeatmap();
+}
+
+function renderHeatmap() {
+  const wrap = document.getElementById('heatmap');
+  const lbls = document.getElementById('hm-day-labels');
+  wrap.innerHTML = ''; lbls.innerHTML = '';
+
+  // Determinar año seleccionado
+  const sel   = document.getElementById('hm-yr-sel');
+  const anio  = parseInt(sel.value) || new Date().getFullYear();
+
+  // Poblar selector de años
+  const years = [...new Set(Object.keys(_heatPorDia).map(k => k.split('-')[0]))].sort();
+  if (years.length > 1 && sel.style.display === 'none') {
+    sel.style.display = '';
+    sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    sel.value = anio;
+  }
+
+  const meses    = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const diasSem  = ['L','M','X','J','V','S','D'];
+  const hoy      = new Date();
+
+  // Labels de días
+  diasSem.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'hm-day-lbl'; el.textContent = d;
+    lbls.appendChild(el);
+  });
+
+  // Calcular primer lunes del año
+  const inicio  = new Date(anio, 0, 1);
+  const offset  = inicio.getDay() === 0 ? 6 : inicio.getDay() - 1;
+  const primerL = new Date(inicio); primerL.setDate(inicio.getDate() - offset);
+
+  // Agrupar semanas por mes
+  const semPorMes = {};
+  const f = new Date(primerL);
+  while (f.getFullYear() <= anio) {
+    const mes = f.getMonth();
+    if (!semPorMes[mes]) semPorMes[mes] = [];
+    const sem = [];
+    for (let d = 0; d < 7; d++) { sem.push(new Date(f)); f.setDate(f.getDate() + 1); }
+    semPorMes[mes].push(sem);
+    if (f.getFullYear() > anio) break;
+  }
+
+  for (let m = 0; m < 12; m++) {
+    const sems  = semPorMes[m] || [];
+    const mDiv  = document.createElement('div'); mDiv.className = 'hm-month';
+    const mLbl  = document.createElement('div'); mLbl.className = 'hm-month-label'; mLbl.textContent = meses[m];
+    const wDiv  = document.createElement('div'); wDiv.className = 'hm-weeks';
+    mDiv.appendChild(mLbl);
+
+    sems.forEach(sem => {
+      const wk = document.createElement('div'); wk.className = 'hm-week';
+      sem.forEach(dia => {
+        const cell = document.createElement('div'); cell.className = 'hm-day';
+        const key  = dia.getFullYear() + '-' + String(dia.getMonth()+1).padStart(2,'0') + '-' + String(dia.getDate()).padStart(2,'0');
+        const dato = _heatPorDia[key];
+        const mismoAnio = dia.getFullYear() === anio;
+        const futuro    = dia > hoy;
+
+        if (!mismoAnio || futuro || !dato) {
+          cell.classList.add('hm-nodata');
+        } else {
+          cell.classList.add(_hmHeatClass(dato));
+        }
+
+        // Tooltip
+        cell.addEventListener('mousemove', e => {
+          const tip = document.getElementById('hm-tooltip');
+          tip.style.opacity = '1';
+          tip.style.left = (e.clientX + 12) + 'px';
+          tip.style.top  = (e.clientY - 8)  + 'px';
+          if (dato && mismoAnio && !futuro) {
+            tip.innerHTML = `<strong>${_fmtFechaLarga(key)}</strong><br>OS: ${dato.OS} · NP: ${dato.NP} · RM: ${dato.RM}`;
+          } else {
+            tip.innerHTML = `<span style="color:var(--muted)">${_fmtFechaLarga(key)} — sin datos</span>`;
+          }
+        });
+        cell.addEventListener('mouseleave', () => { document.getElementById('hm-tooltip').style.opacity = '0'; });
+
+        wk.appendChild(cell);
+      });
+      wDiv.appendChild(wk);
+    });
+    mDiv.appendChild(wDiv);
+    wrap.appendChild(mDiv);
+  }
+}
+
+function _hmHeatClass(dato) {
+  const v = _hmMode === 'os' ? dato.OS : _hmMode === 'np' ? dato.NP : _hmMode === 'rm' ? dato.RM : dato.total;
+  if (v === 0) return 'hm-nodata';
+  if (v === 1) return 'hm-0';
+  if (v <= 3)  return 'hm-1';
+  if (v <= 6)  return 'hm-2';
+  return 'hm-3';
+}
+
+function _fmtFechaLarga(iso) {
+  const [y, m, d] = iso.split('-');
+  const meses = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return d + ' ' + meses[parseInt(m)] + ' ' + y;
+}
+
+/* ── HISTORIAL (fix b) ── */
+async function abrirHistorial(id, doc, num) {
+  document.getElementById('modal-hist-titulo').textContent = `Historial: ${doc} N° ${num}`;
+  document.getElementById('modal-hist-body').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Cargando…</div>';
+  abrirModal('modal-historial');
+  try {
+    const data = await gasPost({ action: 'getHistorial', email: estado.usuario.email, id });
+    if (!data.ok) throw new Error(data.error);
+    const hist = data.historial || [];
+    if (!hist.length) {
+      document.getElementById('modal-hist-body').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Sin historial registrado.</div>';
+      return;
+    }
+    document.getElementById('modal-hist-body').innerHTML = `
+      <div class="timeline">
+        ${hist.map(h => `
+          <div class="tl-item">
+            <div class="tl-dot ${(h.estado||'activo').toLowerCase()}">${(h.estado||'—').slice(0,2).toUpperCase()}</div>
+            <div class="tl-body">
+              <div class="tl-fecha">${h.fechaHora}</div>
+              <div class="tl-estado">${h.estado || 'Activo'}</div>
+              ${h.observacion ? `<div class="tl-obs">${h.observacion}</div>` : ''}
+              ${h.docRef      ? `<div class="tl-obs">Ref: ${h.docRef}</div>` : ''}
+              <div class="tl-usr">por ${h.usuario}</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  } catch (e) {
+    document.getElementById('modal-hist-body').innerHTML = `<div style="color:var(--danger);text-align:center;padding:20px">⚠ Error: ${e.message}</div>`;
+  }
+}
   const tbody = document.getElementById('tbody-ultimos');
   if (!items || !items.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Sin registros</td></tr>';
@@ -975,26 +1284,6 @@ function renderUltimos5(items) {
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.asunto}</td>
       <td><span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span></td>
     </tr>`).join('');
-}
-
-function renderGrafico(os, np, rm) {
-  google.charts.load('current', { packages: ['corechart'] });
-  google.charts.setOnLoadCallback(() => {
-    const dt = google.visualization.arrayToDataTable([
-      ['Tipo', 'Cantidad', { role: 'style' }, { role: 'annotation' }],
-      ['OS', os, '#d97706', String(os)],
-      ['NP', np, '#0891b2', String(np)],
-      ['RM', rm, '#475569', String(rm)]
-    ]);
-    new google.visualization.ColumnChart(document.getElementById('chart-container')).draw(dt, {
-      legend: 'none', bar: { groupWidth: '55%' },
-      chartArea: { width: '80%', height: '75%' },
-      vAxis: { minValue: 0, gridlines: { color: '#e2e8f0' }, textStyle: { color: '#94a3b8', fontSize: 11 } },
-      hAxis: { textStyle: { color: '#1e293b', fontSize: 12, bold: true } },
-      backgroundColor: 'transparent',
-      annotations: { alwaysOutside: false, textStyle: { fontSize: 13, bold: true, color: '#fff' } }
-    });
-  });
 }
 
 /* ── COMUNICACIONES ── */
@@ -1019,7 +1308,7 @@ function renderTablaCom(rows) {
     '<th>Doc</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Etiquetas</th><th>Estado</th><th>Adjunto</th><th style="display:none">_id</th><th></th>';
 
   document.getElementById('tbody-com').innerHTML = rows.map(row => {
-    const [id,,doc,num,fecha,asunto,,etiq,,adjUrl,,,,estado_,] = row;
+    const [id,,doc,num,fecha,asunto,,etiq,,adjUrl,,,estado_] = row;  // pos 12 = Estado
     const adjunto = row[8];
     const esAnulada = estado_ === 'Anulado' ? ' class="row-anulada"' : '';
     const esConsulta = estado.usuario.perfil === 'consulta';
@@ -1028,10 +1317,10 @@ function renderTablaCom(rows) {
     let adjHtml = '';
     if (adjunto || adjUrl) {
       if (adjUrl) {
-        adjHtml = `<a href="${adjUrl}" target="_blank" class="adj-btn has-url" title="${adjunto}">📎</a>`;
+        adjHtml = `<a href="${adjUrl}" target="_blank" class="adj-btn has-url" title="${adjunto}">${ICO.clip}</a>`;
       } else {
         // Registro V3 — sin URL guardada, intentar recuperar al click
-        adjHtml = `<button class="adj-btn" onclick="abrirAdjunto(this,'${adjunto}',${id})" title="${adjunto}">📎</button>`;
+        adjHtml = `<button class="adj-btn" onclick="abrirAdjunto(this,'${adjunto}',${id})" title="${adjunto}">${ICO.clip}</button>`;
       }
     }
 
@@ -1043,7 +1332,9 @@ function renderTablaCom(rows) {
       <td>${num}</td><td>${fecha}</td>
       <td style="max-width:280px">${asunto||''}</td>
       <td>${_renderEtiq(etiq)}</td>
-      <td><span class="badge badge-${(estado_||'activo').toLowerCase()}">${estado_||'Activo'}</span></td>
+      <td><span class="badge badge-${(estado_||'activo').toLowerCase()} badge-with-hist"
+            onclick='abrirHistorial(${id},"${doc}","${num}")'
+            title="Ver historial">${estado_||'Activo'} ${ICO.history}</span></td>
       <td style="text-align:center">${adjHtml}</td>
       <td style="display:none">${id}</td>
       <td>${editBtn}</td>
@@ -1095,14 +1386,14 @@ async function abrirAdjunto(btn, nombreArchivo, id) {
       id      : id
     });
     if (data.ok && data.url) {
-      btn.outerHTML = `<a href="${data.url}" target="_blank" class="adj-btn has-url" title="${nombreArchivo}">📎</a>`;
+      btn.outerHTML = `<a href="${data.url}" target="_blank" class="adj-btn has-url" title="${nombreArchivo}">${ICO.clip}</a>`;
       window.open(data.url, '_blank');
     } else {
-      btn.textContent = '📎';
+      btn.innerHTML = ICO.clip;
       mostrarToast('⚠ No se encontró el archivo en Drive');
     }
   } catch (e) {
-    btn.textContent = '📎';
+    btn.innerHTML = ICO.clip;
     mostrarToast('⚠ Error al buscar el archivo');
   }
 }
@@ -1174,7 +1465,10 @@ function abrirModalCarga() {
   document.getElementById('etiquetas-wrap').innerHTML = estado.etiquetas.map(e =>
     `<label class="etiq-chip" onclick="toggleEtiqueta(this)"><input type="checkbox" value="${e}"> ${e}</label>`).join('');
   ['carga-num','carga-asunto','carga-resumen','carga-obs'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('carga-fecha').value = new Date().toISOString().split('T')[0];
+  const hoy = new Date().toISOString().split('T')[0];
+  const fechaInput = document.getElementById('carga-fecha');
+  fechaInput.value = hoy;
+  fechaInput.max   = hoy;  // fix f.2: no permitir fechas futuras
   document.getElementById('file-name').style.display = 'none';
   document.getElementById('file-input').value = '';
   estado.fileSeleccionado = null;
@@ -1203,17 +1497,17 @@ function fileDrop(e) {
 }
 
 async function guardarCarga() {
-  const doc   = document.getElementById('carga-doc').value;
-  const num   = document.getElementById('carga-num').value.trim();
-  const fecha = document.getElementById('carga-fecha').value;
-  const asunt = document.getElementById('carga-asunto').value.trim();
-  const file  = estado.fileSeleccionado;
-  if (!doc || !num || !fecha || !asunt || !file) {
+  const doc    = document.getElementById('carga-doc').value;
+  const num    = document.getElementById('carga-num').value.trim();
+  const fecha  = document.getElementById('carga-fecha').value;
+  const asunt  = document.getElementById('carga-asunto').value.trim();
+  const resumen = document.getElementById('carga-resumen').value.trim();  // fix f.3
+  const file   = estado.fileSeleccionado;
+  if (!doc || !num || !fecha || !asunt || !resumen || !file) {  // fix f.3: resumen obligatorio
     mostrarToast('⚠ Completá todos los campos obligatorios y adjuntá un archivo');
     return;
   }
   const etiquetas = Array.from(document.querySelectorAll('#etiquetas-wrap .etiq-chip input:checked')).map(cb => cb.value);
-  const resumen   = document.getElementById('carga-resumen').value;
   const obs       = document.getElementById('carga-obs').value;
 
   spinner(true);
