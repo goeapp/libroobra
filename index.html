@@ -1,513 +1,474 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4.0.html — LibroObra V4.0.0 -->
+<!-- index_libroobra_v4.1.html — LibroObra V4.1.0 -->
+<!-- Cambios v4.1:
+  a) Tabla usa ancho completo sin max-width restrictivo
+  b) UX/tokens alineados con MdT (Bebas Neue + DM Sans, paleta dark header, accent amber)
+  c) GAS recupera URLs de adjuntos V3 al hacer click en 📎
+  d) FAB de carga flotante — "Carga" eliminado del topbar
+  e) Preview adjuntos — Etapa II (anotado)
+  f) Filtros de columna independientes (DataTables columns().search) + búsqueda global simultánea
+-->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.0.0</title>
+<title>LibroObra V4.1.0</title>
 
-<!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
 
-<!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-<!-- DataTables -->
 <link  rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/date-eu.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/datetime-moment.js"></script>
-
-<!-- SheetJS para export Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<!-- Google Charts -->
 <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 
 <style>
 /* ══════════════════════════════════════════════
-   VARIABLES
+   DESIGN TOKENS — alineados con MdT v12.5
 ══════════════════════════════════════════════ */
 :root {
-  --primary:        #1a3a5c;
-  --primary-light:  #2d5f8a;
-  --primary-xlight: #e8f0f8;
-  --accent:         #e87c2e;
-  --accent-soft:    #fdebd8;
+  --bg        : #f1f5f9;
+  --surface   : #ffffff;
+  --border    : #e2e8f0;
+  --accent    : #d97706;       /* amber — igual que MdT */
+  --accent2   : #0f172a;       /* dark navy — header */
+  --text      : #1e293b;
+  --muted     : #64748b;
+  --success   : #16a34a;
+  --danger    : #dc2626;
+  --warning   : #f59e0b;
 
-  --color-os:       #e8a020;
-  --color-os-bg:    #fef3d8;
-  --color-np:       #2196a8;
-  --color-np-bg:    #d8f3f5;
-  --color-rm:       #5a6472;
-  --color-rm-bg:    #e8eaed;
+  /* Tipos de documento */
+  --os-bg : #fef3c7; --os-fg : #92400e; --os-border: #d97706;
+  --np-bg : #cffafe; --np-fg : #164e63; --np-border: #0891b2;
+  --rm-bg : #f1f5f9; --rm-fg : #475569; --rm-border: #94a3b8;
 
-  --estado-activo:  #2e7d32;
-  --estado-anulado: #c62828;
-  --estado-aviso:   #e65100;
+  /* Estado */
+  --activo-bg : #dcfce7; --activo-fg : #166534;
+  --anulado-bg: #fee2e2; --anulado-fg: #991b1b;
+  --aviso-bg  : #fef9c3; --aviso-fg  : #854d0e;
 
-  --surface-0:      #f4f6f9;
-  --surface-1:      #ffffff;
-  --surface-2:      #edf1f7;
-
-  --text-1:         #1a2332;
-  --text-2:         #4a5a6a;
-  --text-3:         #8a9aaa;
-
-  --border:         #d0d8e4;
-  --radius:         6px;
-  --radius-lg:      10px;
-  --shadow:         0 2px 8px rgba(0,0,0,.08);
-  --shadow-lg:      0 4px 20px rgba(0,0,0,.12);
-
-  --topbar-h:       52px;
+  --radius   : 12px;
+  --radius-sm: 8px;
+  --shadow   : 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.10);
+  --header-h : 52px;
 }
 
 /* ══════════════════════════════════════════════
    RESET
 ══════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 body {
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 14px;
-  color: var(--text-1);
-  background: var(--surface-0);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; line-height: 1.5;
+  background: var(--bg); color: var(--text);
   min-height: 100vh;
 }
-
-button { cursor: pointer; font-family: inherit; }
-input, select, textarea { font-family: inherit; font-size: 14px; }
-a { color: var(--primary); text-decoration: none; }
-a:hover { text-decoration: underline; }
+button { font-family: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
 
 /* ══════════════════════════════════════════════
-   PANTALLAS: LOGIN / DENEGADO / APP
+   PANTALLAS
 ══════════════════════════════════════════════ */
-#login-screen, #denied-screen { display: none; }
-#app { display: none; flex-direction: column; min-height: 100vh; }
+#login-screen  { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 999; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+#denied-screen { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 999; flex-direction: column; align-items: center; justify-content: center; }
+#app           { display: none; flex-direction: column; min-height: 100vh; }
 
 /* ── Login ── */
-#login-screen {
-  position: fixed; inset: 0;
-  background: var(--surface-0);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 999;
-}
-.login-card {
-  background: var(--surface-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 48px 44px;
-  width: 100%; max-width: 400px;
-  text-align: center;
+.login-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 48px 40px;
+  max-width: 360px; width: 100%; text-align: center;
+  box-shadow: var(--shadow-md);
   animation: fadeUp .35s ease both;
 }
-.login-brand {
-  font-size: 32px; font-weight: 700;
-  color: var(--primary); letter-spacing: -1px;
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  margin-bottom: 8px;
-}
-.login-brand-dot {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--accent); flex-shrink: 0; margin-bottom: 2px;
-}
-.login-version { font-size: 12px; color: var(--text-3); margin-bottom: 28px; }
-.login-title   { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-.login-desc    { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 28px; }
-#g-btn-wrap    { display: flex; justify-content: center; margin-bottom: 20px; }
-.login-note    { font-size: 11px; color: var(--text-3); }
+.login-logo  { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; color: var(--accent); letter-spacing: 3px; margin-bottom: 4px; }
+.login-emoji { font-size: 2.4rem; margin-bottom: 12px; display: block; }
+.login-sub   { font-size: .78rem; color: var(--muted); margin-bottom: 32px; }
+.login-title { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+.login-desc  { font-size: .78rem; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+#g-btn-wrap  { display: flex; justify-content: center; }
 
 /* ── Denegado ── */
-#denied-screen {
-  position: fixed; inset: 0;
-  background: var(--surface-0);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 999;
+.denied-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 48px 40px;
+  max-width: 380px; width: 100%; text-align: center;
+  box-shadow: var(--shadow-md);
 }
-.denied-card {
-  background: var(--surface-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 48px 44px;
-  width: 100%; max-width: 420px;
-  text-align: center;
-}
-.denied-icon  { font-size: 48px; margin-bottom: 16px; }
-.denied-title { font-size: 18px; font-weight: 700; color: var(--estado-anulado); margin-bottom: 10px; }
-.denied-msg   { font-size: 14px; color: var(--text-2); line-height: 1.6; margin-bottom: 24px; }
-.denied-email { font-weight: 600; color: var(--text-1); }
+.denied-icon  { font-size: 3rem; margin-bottom: 16px; display: block; }
+.denied-title { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+.denied-msg   { font-size: .8rem; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+.denied-email { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; font-size: .78rem; color: var(--muted); margin-bottom: 20px; }
 
 /* ══════════════════════════════════════════════
-   TOPBAR
+   HEADER — dark navy como MdT
 ══════════════════════════════════════════════ */
-#topbar {
-  height: var(--topbar-h);
-  background: var(--primary);
+#app-header {
+  height: var(--header-h);
+  background: var(--accent2);
   display: flex; align-items: center;
-  padding: 0 20px; gap: 0;
+  padding: 0 20px; gap: 12px;
   position: sticky; top: 0; z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  flex-shrink: 0;
 }
-
-.topbar-brand {
-  font-size: 20px; font-weight: 700; color: #fff;
-  letter-spacing: -0.5px;
-  display: flex; align-items: center; gap: 4px;
-  margin-right: 28px; flex-shrink: 0;
+.hdr-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem; color: var(--accent);
+  letter-spacing: 2px; white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
 }
-.topbar-brand-dot {
+.hdr-logo-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--accent); flex-shrink: 0; margin-bottom: 1px;
+  background: var(--accent); margin-bottom: 2px; flex-shrink: 0;
 }
-
-.topbar-nav { display: flex; align-items: center; gap: 2px; flex: 1; }
-
-.nav-btn {
+.hdr-nav { display: flex; align-items: center; gap: 2px; margin-left: 16px; }
+.hdr-nav-btn {
   background: none; border: none;
-  color: rgba(255,255,255,.75);
-  font-size: 13px; font-weight: 500;
-  padding: 6px 12px; border-radius: var(--radius);
-  transition: background .15s, color .15s;
-  white-space: nowrap;
+  color: rgba(255,255,255,.55);
+  font-size: .8rem; font-weight: 500;
+  padding: 5px 11px; border-radius: var(--radius-sm);
+  transition: all .15s; white-space: nowrap;
 }
-.nav-btn:hover   { background: rgba(255,255,255,.12); color: #fff; }
-.nav-btn.active  { background: rgba(255,255,255,.18); color: #fff; font-weight: 600; }
-
-.topbar-right {
-  display: flex; align-items: center; gap: 12px;
-  margin-left: auto; flex-shrink: 0;
-}
-
-.topbar-obra {
-  font-size: 12px; color: rgba(255,255,255,.6);
-  background: rgba(255,255,255,.1);
-  padding: 4px 10px; border-radius: 20px;
-  max-width: 200px; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
-
-.topbar-user {
-  font-size: 13px; font-weight: 500;
-  color: rgba(255,255,255,.85);
-}
-
+.hdr-nav-btn:hover  { background: rgba(255,255,255,.08); color: #fff; }
+.hdr-nav-btn.active { background: rgba(255,255,255,.12); color: #fff; font-weight: 600; }
+.hdr-sep  { flex: 1; }
+.hdr-obra { font-size: .72rem; color: rgba(255,255,255,.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.hdr-name { font-size: .78rem; color: rgba(255,255,255,.55); white-space: nowrap; }
+.hdr-version { font-size: .65rem; color: rgba(255,255,255,.25); margin-left: 4px; }
 .btn-salir {
-  background: none; border: 1px solid rgba(255,255,255,.3);
-  color: rgba(255,255,255,.75);
-  font-size: 12px; font-weight: 500;
-  padding: 5px 12px; border-radius: var(--radius);
+  background: transparent; border: 1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.55); border-radius: var(--radius-sm);
+  padding: 5px 12px; font-size: .75rem; font-family: inherit;
   transition: all .15s;
 }
-.btn-salir:hover { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.6); }
+.btn-salir:hover { background: rgba(255,255,255,.08); color: #fff; }
 
 /* ══════════════════════════════════════════════
-   CONTENIDO PRINCIPAL
+   MAIN CONTENT — sin max-width restrictivo
 ══════════════════════════════════════════════ */
-#main-content { flex: 1; padding: 24px 28px; max-width: 1280px; width: 100%; margin: 0 auto; }
+#main-content { flex: 1; padding: 20px 24px; }
 
 .section { display: none; }
 .section.active { display: block; animation: fadeIn .2s ease; }
 
-@keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ══════════════════════════════════════════════
    SECCIÓN HEADER
 ══════════════════════════════════════════════ */
-.section-header {
+.sec-header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 20px; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
 }
-.section-title {
-  font-size: 18px; font-weight: 700; color: var(--primary);
+.sec-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem; letter-spacing: 1px;
+  color: var(--accent2);
   display: flex; align-items: center; gap: 8px;
 }
-.section-title-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
-}
-.section-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sec-title-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-bottom: 2px; }
+.sec-actions   { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* ══════════════════════════════════════════════
-   CARDS
+   CARDS DASHBOARD
 ══════════════════════════════════════════════ */
-.card {
-  background: var(--surface-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 20px;
-}
-
-.cards-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px; margin-bottom: 24px;
-}
-
+.cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
 .stat-card {
-  background: var(--surface-1);
-  border-radius: var(--radius-lg);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
   box-shadow: var(--shadow);
-  padding: 20px;
-  text-align: center;
-  border-top: 3px solid var(--border);
+  border-left: 4px solid var(--border);
   transition: transform .15s;
 }
-.stat-card:hover { transform: translateY(-2px); }
-.stat-card.os    { border-top-color: var(--color-os); }
-.stat-card.np    { border-top-color: var(--color-np); }
-.stat-card.rm    { border-top-color: var(--color-rm); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-card.os { border-left-color: var(--os-border); }
+.stat-card.np { border-left-color: var(--np-border); }
+.stat-card.rm { border-left-color: var(--rm-border); }
+.stat-label { font-size: .68rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; color: var(--accent2); line-height: 1; letter-spacing: 1px; }
+.stat-sub   { font-size: .72rem; color: var(--muted); margin-top: 4px; }
 
-.stat-label { font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
-.stat-value { font-size: 36px; font-weight: 700; color: var(--primary); line-height: 1; }
-.stat-sub   { font-size: 11px; color: var(--text-3); margin-top: 6px; }
+/* ══════════════════════════════════════════════
+   PANEL CARD
+══════════════════════════════════════════════ */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 18px 20px;
+}
+.card-title {
+  font-size: .68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); margin-bottom: 14px;
+}
 
 /* ══════════════════════════════════════════════
    BADGES
 ══════════════════════════════════════════════ */
 .badge {
-  display: inline-block;
-  padding: 2px 8px; border-radius: 20px;
-  font-size: 11px; font-weight: 700;
-  white-space: nowrap;
+  display: inline-block; padding: 2px 8px; border-radius: 99px;
+  font-size: .72rem; font-weight: 700; white-space: nowrap; border: 1px solid transparent;
 }
-.badge-os    { background: var(--color-os-bg); color: #7a4800; }
-.badge-np    { background: var(--color-np-bg); color: #0a5a60; }
-.badge-rm    { background: var(--color-rm-bg); color: #3a4450; }
-.badge-activo  { background: #e8f5e9; color: var(--estado-activo); }
-.badge-anulado { background: #ffebee; color: var(--estado-anulado); }
-.badge-aviso   { background: #fff3e0; color: var(--estado-aviso); }
+.badge-os      { background: var(--os-bg);     color: var(--os-fg);     border-color: var(--os-border); }
+.badge-np      { background: var(--np-bg);     color: var(--np-fg);     border-color: var(--np-border); }
+.badge-rm      { background: var(--rm-bg);     color: var(--rm-fg);     border-color: var(--rm-border); }
+.badge-activo  { background: var(--activo-bg); color: var(--activo-fg); }
+.badge-anulado { background: var(--anulado-bg);color: var(--anulado-fg);}
+.badge-aviso   { background: var(--aviso-bg);  color: var(--aviso-fg);  }
 
 /* ══════════════════════════════════════════════
-   FILTROS RÁPIDOS (encima de tabla Comunicaciones)
+   FILTROS — independientes por columna (fix f)
 ══════════════════════════════════════════════ */
-.filtros-rapidos {
-  display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;
+.filtros-wrap {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; flex-wrap: wrap;
 }
+.filtro-label { font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .filtro-btn {
-  background: var(--surface-1); border: 1px solid var(--border);
-  color: var(--text-2); font-size: 12px; font-weight: 600;
-  padding: 5px 14px; border-radius: 20px;
-  transition: all .15s;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); font-size: .78rem; font-weight: 600;
+  padding: 4px 14px; border-radius: 99px;
+  transition: all .15s; font-family: inherit;
 }
-.filtro-btn:hover { border-color: var(--primary); color: var(--primary); }
-.filtro-btn.active-os { background: var(--color-os-bg); border-color: var(--color-os); color: #7a4800; }
-.filtro-btn.active-np { background: var(--color-np-bg); border-color: var(--color-np); color: #0a5a60; }
-.filtro-btn.active-rm { background: var(--color-rm-bg); border-color: var(--color-rm); color: #3a4450; }
-.filtro-btn.active-todos { background: var(--primary-xlight); border-color: var(--primary); color: var(--primary); }
+.filtro-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+.filtro-btn.f-active-todos { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.filtro-btn.f-active-os   { background: var(--os-bg);  border-color: var(--os-border); color: var(--os-fg); }
+.filtro-btn.f-active-np   { background: var(--np-bg);  border-color: var(--np-border); color: var(--np-fg); }
+.filtro-btn.f-active-rm   { background: var(--rm-bg);  border-color: var(--rm-border); color: var(--rm-fg); }
+
+/* ══════════════════════════════════════════════
+   DATATABLES — override ancho completo + estilo MdT
+══════════════════════════════════════════════ */
+.dt-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 16px 18px; width: 100%;
+}
+table.dataTable { border-collapse: collapse !important; width: 100% !important; }
+table.dataTable thead th {
+  background: var(--bg);
+  color: var(--muted); font-size: .67rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: 2px solid var(--border) !important;
+  padding: 10px 12px !important; white-space: nowrap;
+}
+table.dataTable tbody tr { transition: background .1s; }
+table.dataTable tbody tr:hover td { background: #f8fafc !important; }
+table.dataTable tbody td {
+  padding: 9px 12px !important;
+  border-bottom: 1px solid var(--border) !important;
+  vertical-align: middle; color: var(--text); font-size: .85rem;
+}
+table.dataTable tbody tr.row-anulada td { opacity: .45; }
+.dataTables_wrapper .dataTables_filter input {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 5px 10px; font-family: 'DM Sans', sans-serif; font-size: .8rem;
+  outline: none; transition: border-color .15s; background: var(--bg);
+}
+.dataTables_wrapper .dataTables_filter input:focus { border-color: var(--accent); }
+.dataTables_wrapper .dataTables_length select {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 4px 8px; font-family: 'DM Sans', sans-serif; background: var(--bg);
+}
+.dataTables_wrapper .dataTables_info,
+.dataTables_wrapper .dataTables_paginate { font-size: .75rem; color: var(--muted); margin-top: 12px; }
+.dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: var(--radius-sm) !important; font-size: .78rem !important; }
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background: var(--accent2) !important; color: #fff !important; border: none !important;
+}
+
+/* Etiquetas pills en tabla */
+.etiq-pill {
+  display: inline-block; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 99px; padding: 1px 7px; font-size: .68rem; margin: 1px;
+  color: var(--muted);
+}
+
+/* Adjunto */
+.adj-btn {
+  background: none; border: none; font-size: 1rem;
+  color: var(--muted); padding: 2px 6px; border-radius: var(--radius-sm);
+  transition: all .15s; cursor: pointer;
+}
+.adj-btn:hover { color: var(--accent); background: var(--os-bg); }
+.adj-btn.has-url { color: var(--accent2); }
+.adj-btn.has-url:hover { color: var(--accent); }
+
+/* Edit btn */
+.btn-edit-row {
+  background: none; border: 1px solid var(--border);
+  color: var(--muted); font-size: .75rem; padding: 3px 10px;
+  border-radius: var(--radius-sm); transition: all .15s; font-family: inherit;
+}
+.btn-edit-row:hover { border-color: var(--accent2); color: var(--accent2); background: var(--bg); }
 
 /* ══════════════════════════════════════════════
    BOTONES
 ══════════════════════════════════════════════ */
 .btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  border: none; border-radius: var(--radius);
-  font-size: 13px; font-weight: 600;
-  padding: 8px 16px;
-  transition: all .15s; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 5px;
+  border: none; border-radius: var(--radius-sm);
+  font-size: .8rem; font-weight: 600; font-family: inherit;
+  padding: 7px 14px; transition: all .15s; white-space: nowrap; cursor: pointer;
 }
-.btn-primary   { background: var(--primary);  color: #fff; }
-.btn-primary:hover { background: var(--primary-light); }
-.btn-secondary { background: var(--surface-2); color: var(--text-1); border: 1px solid var(--border); }
-.btn-secondary:hover { background: var(--border); }
-.btn-danger    { background: #ffebee; color: var(--estado-anulado); border: 1px solid #ffcdd2; }
-.btn-danger:hover { background: #ffcdd2; }
-.btn-sm { padding: 5px 12px; font-size: 12px; }
-.btn-icon { background: none; border: none; color: var(--text-3); padding: 4px 6px; border-radius: var(--radius); transition: all .15s; font-size: 16px; }
-.btn-icon:hover { color: var(--primary); background: var(--primary-xlight); }
+.btn-primary   { background: var(--accent2); color: #fff; }
+.btn-primary:hover { background: #1e293b; }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg); }
+.btn-danger    { background: var(--anulado-bg); color: var(--anulado-fg); border: 1px solid #fecaca; }
+.btn-danger:hover { background: #fecaca; }
+.btn-sm { padding: 5px 11px; font-size: .75rem; }
 
 /* ══════════════════════════════════════════════
-   TABLA DATATABLES — override
+   FAB — Carga de documentos (fix d)
 ══════════════════════════════════════════════ */
-.dt-wrap {
-  background: var(--surface-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 16px 20px;
+#fab-carga {
+  display: none; /* se muestra solo si perfil = usuario */
+  position: fixed; bottom: 28px; right: 28px;
+  width: 54px; height: 54px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  border: none; font-size: 1.6rem; line-height: 1;
+  box-shadow: 0 4px 16px rgba(217,119,6,.45);
+  z-index: 200; align-items: center; justify-content: center;
+  transition: transform .15s, box-shadow .15s; cursor: pointer;
 }
-
-table.dataTable { border-collapse: collapse !important; width: 100% !important; }
-table.dataTable thead th {
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .4px;
-  border-bottom: 2px solid var(--border) !important;
-  padding: 10px 12px !important;
-}
-table.dataTable tbody tr { transition: background .1s; }
-table.dataTable tbody tr:hover td { background: var(--primary-xlight) !important; }
-table.dataTable tbody td {
-  padding: 10px 12px !important;
-  border-bottom: 1px solid var(--surface-2) !important;
-  vertical-align: middle;
-  color: var(--text-1);
-}
-table.dataTable tbody tr.anulada td { opacity: .5; }
-
-.dataTables_wrapper .dataTables_filter input {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 5px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px;
-  outline: none; transition: border-color .15s;
-}
-.dataTables_wrapper .dataTables_filter input:focus { border-color: var(--primary); }
-.dataTables_wrapper .dataTables_length select {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 4px 8px; font-family: 'DM Sans', sans-serif;
-}
-.dataTables_wrapper .dataTables_info,
-.dataTables_wrapper .dataTables_paginate { font-size: 12px; color: var(--text-3); margin-top: 12px; }
-.dataTables_wrapper .dataTables_paginate .paginate_button {
-  border-radius: var(--radius) !important; font-size: 12px !important;
-}
-.dataTables_wrapper .dataTables_paginate .paginate_button.current {
-  background: var(--primary) !important; color: #fff !important; border: none !important;
-}
-
-/* Adjunto link */
-.adj-link { color: var(--primary); font-size: 16px; }
-.adj-link:hover { color: var(--accent); }
+#fab-carga:hover  { transform: scale(1.08); box-shadow: 0 6px 20px rgba(217,119,6,.55); }
+#fab-carga:active { transform: scale(.96); }
 
 /* ══════════════════════════════════════════════
    MODAL
 ══════════════════════════════════════════════ */
 .modal-overlay {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.45); z-index: 500;
-  align-items: center; justify-content: center;
-  padding: 20px;
+  background: rgba(15,23,42,.5); z-index: 500;
+  align-items: center; justify-content: center; padding: 20px;
 }
 .modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
-
 .modal {
-  background: var(--surface-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  width: 100%; max-width: 560px;
-  max-height: 90vh; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-md);
+  width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
   animation: fadeUp .25s ease;
 }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
 }
-.modal-title { font-size: 16px; font-weight: 700; color: var(--primary); }
-.modal-close {
-  background: none; border: none; font-size: 20px;
-  color: var(--text-3); line-height: 1; padding: 2px 6px;
-  border-radius: var(--radius); transition: all .15s;
-}
-.modal-close:hover { background: var(--surface-2); color: var(--text-1); }
-.modal-body    { padding: 20px 24px; }
-.modal-footer  { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+.modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 1px; color: var(--accent2); }
+.modal-close { background: none; border: none; font-size: 1.2rem; color: var(--muted); padding: 2px 6px; border-radius: var(--radius-sm); transition: all .15s; }
+.modal-close:hover { background: var(--bg); color: var(--text); }
+.modal-body   { padding: 18px 22px; }
+.modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
 
 /* ══════════════════════════════════════════════
-   FORMULARIO DE CARGA
+   FORMULARIO
 ══════════════════════════════════════════════ */
-.form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-.form-row.single { grid-template-columns: 1fr; }
-.form-group { display: flex; flex-direction: column; gap: 5px; }
-.form-label {
-  font-size: 12px; font-weight: 600;
-  color: var(--text-2); text-transform: uppercase; letter-spacing: .4px;
-}
-.form-label .req { color: var(--estado-anulado); margin-left: 2px; }
+.form-row         { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.form-row.full    { grid-template-columns: 1fr; }
+.form-group       { display: flex; flex-direction: column; gap: 5px; }
+.form-label       { font-size: .68rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.form-label .req  { color: var(--danger); margin-left: 2px; }
 .form-control {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 8px 12px; color: var(--text-1);
-  transition: border-color .15s; background: var(--surface-1);
-  width: 100%;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 11px; color: var(--text); background: var(--surface);
+  width: 100%; transition: border-color .15s; font-family: inherit; font-size: .85rem;
 }
-.form-control:focus { outline: none; border-color: var(--primary); }
-.form-control.error { border-color: var(--estado-anulado); }
-textarea.form-control { resize: vertical; min-height: 70px; }
+.form-control:focus { outline: none; border-color: var(--accent); }
+textarea.form-control { resize: vertical; min-height: 66px; }
 
-/* Etiquetas checkboxes */
+/* Etiquetas chips */
 .etiquetas-wrap {
-  display: flex; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: 5px;
   padding: 10px; border: 1px solid var(--border);
-  border-radius: var(--radius); background: var(--surface-1);
+  border-radius: var(--radius-sm); background: var(--bg);
 }
-.etiqueta-chip {
-  display: flex; align-items: center; gap: 4px;
-  padding: 4px 10px; border-radius: 20px;
-  border: 1px solid var(--border);
-  font-size: 12px; font-weight: 500;
-  cursor: pointer; transition: all .15s;
-  user-select: none;
+.etiq-chip {
+  padding: 3px 10px; border-radius: 99px;
+  border: 1px solid var(--border); font-size: .75rem; font-weight: 500;
+  cursor: pointer; transition: all .15s; user-select: none;
+  background: var(--surface); color: var(--muted);
 }
-.etiqueta-chip input { display: none; }
-.etiqueta-chip:hover { border-color: var(--primary); color: var(--primary); }
-.etiqueta-chip.checked {
-  background: var(--primary); border-color: var(--primary); color: #fff;
-}
+.etiq-chip input { display: none; }
+.etiq-chip:hover { border-color: var(--accent2); color: var(--accent2); }
+.etiq-chip.checked { background: var(--accent2); border-color: var(--accent2); color: #fff; }
 
-/* Adjunto drop zone */
+/* File zone */
 .file-zone {
-  border: 2px dashed var(--border); border-radius: var(--radius);
-  padding: 20px; text-align: center;
-  cursor: pointer; transition: all .15s;
-  background: var(--surface-0);
+  border: 2px dashed var(--border); border-radius: var(--radius-sm);
+  padding: 18px; text-align: center; cursor: pointer;
+  transition: all .15s; background: var(--bg);
 }
-.file-zone:hover, .file-zone.dragover { border-color: var(--primary); background: var(--primary-xlight); }
-.file-zone-icon { font-size: 28px; margin-bottom: 6px; }
-.file-zone-text { font-size: 13px; color: var(--text-2); }
-.file-zone-name { font-size: 13px; font-weight: 600; color: var(--primary); margin-top: 6px; }
+.file-zone:hover, .file-zone.dragover { border-color: var(--accent); background: var(--os-bg); }
+.file-zone-icon { font-size: 1.6rem; margin-bottom: 4px; }
+.file-zone-text { font-size: .78rem; color: var(--muted); }
+.file-zone-name { font-size: .82rem; font-weight: 600; color: var(--accent2); margin-top: 5px; }
 #file-input     { display: none; }
 
 /* ══════════════════════════════════════════════
-   ADMIN — subtabs
+   SUBTABS ADMIN
 ══════════════════════════════════════════════ */
-.subtabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+.subtabs { display: flex; gap: 0; margin-bottom: 18px; border-bottom: 2px solid var(--border); }
 .subtab-btn {
-  background: none; border: none;
-  font-size: 14px; font-weight: 600; color: var(--text-2);
-  padding: 10px 20px; border-bottom: 2px solid transparent;
+  background: none; border: none; font-family: inherit;
+  font-size: .85rem; font-weight: 600; color: var(--muted);
+  padding: 9px 20px; border-bottom: 2px solid transparent;
   margin-bottom: -2px; transition: all .15s;
 }
-.subtab-btn:hover { color: var(--primary); }
-.subtab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-
+.subtab-btn:hover { color: var(--accent2); }
+.subtab-btn.active { color: var(--accent2); border-bottom-color: var(--accent); }
 .subtab-panel { display: none; }
 .subtab-panel.active { display: block; animation: fadeIn .2s ease; }
 
 /* ══════════════════════════════════════════════
-   SELECTOR DE OBRA (Admin/Dashboard)
+   SELECTOR OBRA (admin)
 ══════════════════════════════════════════════ */
-.obra-selector-wrap {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 20px;
+.obra-sel-wrap { display: flex; align-items: center; gap: 8px; }
+.obra-sel-label { font-size: .75rem; font-weight: 600; color: rgba(255,255,255,.45); }
+.obra-sel {
+  border: 1px solid rgba(255,255,255,.18); border-radius: var(--radius-sm);
+  padding: 5px 10px; background: rgba(255,255,255,.06); color: #fff;
+  font-family: inherit; font-size: .78rem; min-width: 220px;
 }
-.obra-selector-label { font-size: 13px; font-weight: 600; color: var(--text-2); }
-.obra-selector {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 7px 12px; background: var(--surface-1); color: var(--text-1);
-  min-width: 260px;
+.obra-sel:focus { outline: none; border-color: var(--accent); }
+.obra-sel option { background: var(--accent2); }
+
+/* ══════════════════════════════════════════════
+   ÚLTIMOS 5 — tabla compacta
+══════════════════════════════════════════════ */
+.ultimos-table { width: 100%; border-collapse: collapse; }
+.ultimos-table th {
+  font-size: .67rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); padding: 7px 10px;
+  border-bottom: 2px solid var(--border); text-align: left;
 }
-.obra-selector:focus { outline: none; border-color: var(--primary); }
+.ultimos-table td {
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+  font-size: .82rem; color: var(--text);
+}
+.ultimos-table tr:last-child td { border-bottom: none; }
 
 /* ══════════════════════════════════════════════
    SPINNER
 ══════════════════════════════════════════════ */
 #spinner {
   display: none; position: fixed; inset: 0;
-  background: rgba(255,255,255,.75);
-  z-index: 800;
+  background: rgba(255,255,255,.7); z-index: 800;
   align-items: center; justify-content: center;
 }
 #spinner.on { display: flex; }
 .spinner-ring {
-  width: 44px; height: 44px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
+  width: 40px; height: 40px;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -515,203 +476,147 @@ textarea.form-control { resize: vertical; min-height: 70px; }
    TOAST
 ══════════════════════════════════════════════ */
 #toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-  background: var(--text-1); color: #fff;
-  padding: 10px 20px; border-radius: 20px;
-  font-size: 13px; font-weight: 500;
-  opacity: 0; transition: all .3s; pointer-events: none; z-index: 900;
-  white-space: nowrap; max-width: 90vw;
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--accent2); color: #fff;
+  padding: 9px 20px; border-radius: 99px;
+  font-size: .82rem; font-weight: 500;
+  opacity: 0; transition: all .3s; pointer-events: none;
+  z-index: 900; white-space: nowrap; max-width: 90vw;
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ══════════════════════════════════════════════
-   DASHBOARD — últimos 5
-══════════════════════════════════════════════ */
-.ultimos-table { width: 100%; border-collapse: collapse; }
-.ultimos-table th {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .4px; color: var(--text-2);
-  padding: 8px 10px; border-bottom: 2px solid var(--border);
-  text-align: left;
-}
-.ultimos-table td {
-  padding: 9px 10px; border-bottom: 1px solid var(--surface-2);
-  font-size: 13px; color: var(--text-1);
-}
-.ultimos-table tr:last-child td { border-bottom: none; }
-
-/* ══════════════════════════════════════════════
-   GRÁFICO
-══════════════════════════════════════════════ */
-#chart-container { width: 100%; min-height: 220px; }
-
-/* ══════════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════════ */
-@media (max-width: 640px) {
-  #main-content { padding: 16px; }
-  .form-row { grid-template-columns: 1fr; }
-  .topbar-obra, .topbar-user { display: none; }
-}
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════
-     PANTALLA LOGIN
-══════════════════════════════════════════════ -->
+<!-- LOGIN -->
 <div id="login-screen">
-  <div class="login-card">
-    <div class="login-brand">
-      LibroObra<div class="login-brand-dot"></div>
-    </div>
-    <div class="login-version">V4.0.0</div>
+  <div class="login-box">
+    <span class="login-emoji">📋</span>
+    <div class="login-logo">LibroObra</div>
+    <div class="login-sub">V4.1.0 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
-    <div class="login-desc">
-      Usá tu cuenta corporativa para ingresar.<br>
-      El acceso es gestionado por el administrador.
-    </div>
-    <div id="g-btn-wrap"></div>
-    <div class="login-note">Solo cuentas autorizadas en el sistema</div>
+    <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
+    <div id="g-btn-wrap" style="margin-bottom:16px"></div>
+    <div style="font-size:.72rem;color:var(--muted)">Solo cuentas autorizadas en el sistema</div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     PANTALLA DENEGADO
-══════════════════════════════════════════════ -->
+<!-- DENEGADO -->
 <div id="denied-screen">
-  <div class="denied-card">
-    <div class="denied-icon">🔒</div>
+  <div class="denied-box">
+    <span class="denied-icon">🔒</span>
     <div class="denied-title">Acceso no autorizado</div>
-    <div class="denied-msg">
-      La cuenta <span class="denied-email" id="denied-email"></span>
-      no está registrada en LibroObra.<br>
-      Contactá al administrador del sistema.
-    </div>
-    <button class="btn btn-secondary" onclick="cerrarSesion()">Intentar con otra cuenta</button>
+    <div class="denied-msg">Esta cuenta no está registrada en LibroObra.<br>Contactá al administrador del sistema.</div>
+    <div class="denied-email" id="denied-email"></div>
+    <button class="btn-logout btn btn-secondary" onclick="cerrarSesion()">Intentar con otra cuenta</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     APP
-══════════════════════════════════════════════ -->
+<!-- APP -->
 <div id="app">
 
-  <!-- TOPBAR -->
-  <div id="topbar">
-    <div class="topbar-brand">
-      LibroObra<div class="topbar-brand-dot"></div>
-    </div>
-    <nav class="topbar-nav">
-      <button class="nav-btn" id="nav-inicio"          onclick="showSection('inicio')">Inicio</button>
-      <button class="nav-btn" id="nav-comunicaciones"  onclick="showSection('comunicaciones')">Comunicaciones</button>
-      <button class="nav-btn" id="nav-carga"           onclick="abrirModalCarga()" style="display:none">Carga</button>
-      <button class="nav-btn" id="nav-admin"           onclick="showSection('admin')" style="display:none">Admin</button>
+  <!-- HEADER -->
+  <div id="app-header">
+    <div class="hdr-logo">LibroObra<div class="hdr-logo-dot"></div></div>
+    <nav class="hdr-nav">
+      <button class="hdr-nav-btn" id="nav-inicio"         onclick="showSection('inicio')">Inicio</button>
+      <button class="hdr-nav-btn" id="nav-comunicaciones" onclick="showSection('comunicaciones')">Comunicaciones</button>
+      <button class="hdr-nav-btn" id="nav-admin"          onclick="showSection('admin')" style="display:none">Admin</button>
     </nav>
-    <div class="topbar-right">
-      <span class="topbar-obra"  id="topbar-obra"></span>
-      <span class="topbar-user"  id="topbar-user"></span>
-      <button class="btn-salir"  onclick="cerrarSesion()">Salir</button>
+    <!-- Selector obra admin (en header) -->
+    <div id="obra-sel-header" class="obra-sel-wrap" style="display:none;margin-left:16px">
+      <span class="obra-sel-label">Obra</span>
+      <select class="obra-sel" id="sel-obra-global" onchange="onObraChange()"></select>
     </div>
+    <div class="hdr-sep"></div>
+    <span class="hdr-obra" id="hdr-obra"></span>
+    <span class="hdr-name" id="hdr-name"></span>
+    <span class="hdr-version">V4.1.0</span>
+    <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
-  <!-- CONTENIDO -->
+  <!-- MAIN -->
   <div id="main-content">
 
-    <!-- ── INICIO ── -->
+    <!-- INICIO -->
     <div id="sec-inicio" class="section active">
-      <div class="section-header">
-        <div class="section-title"><div class="section-title-dot"></div>Inicio</div>
-        <div class="section-actions">
-          <div id="obra-selector-dash" class="obra-selector-wrap" style="display:none;margin:0">
-            <span class="obra-selector-label">Obra:</span>
-            <select class="obra-selector" id="sel-obra-dash" onchange="cargarDashboard()"></select>
-          </div>
+      <div class="sec-header">
+        <div class="sec-title"><div class="sec-title-dot"></div>Inicio</div>
+        <div class="sec-actions">
           <button class="btn btn-secondary btn-sm" onclick="cargarDashboard()">↻ Actualizar</button>
         </div>
       </div>
-
-      <!-- Cards contadores -->
       <div class="cards-row">
         <div class="stat-card os">
           <div class="stat-label">Órdenes de Servicio</div>
-          <div class="stat-value" id="dash-total-os">—</div>
-          <div class="stat-sub" id="dash-sub-os"></div>
+          <div class="stat-value" id="dash-os">—</div>
+          <div class="stat-sub"  id="dash-os-sub"></div>
         </div>
         <div class="stat-card np">
           <div class="stat-label">Notas de Pedido</div>
-          <div class="stat-value" id="dash-total-np">—</div>
-          <div class="stat-sub" id="dash-sub-np"></div>
+          <div class="stat-value" id="dash-np">—</div>
+          <div class="stat-sub"  id="dash-np-sub"></div>
         </div>
         <div class="stat-card rm">
           <div class="stat-label">Reuniones / Minutas</div>
-          <div class="stat-value" id="dash-total-rm">—</div>
-          <div class="stat-sub" id="dash-sub-rm"></div>
+          <div class="stat-value" id="dash-rm">—</div>
+          <div class="stat-sub"  id="dash-rm-sub"></div>
         </div>
       </div>
-
-      <!-- Gráfico + Últimos 5 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
         <div class="card">
-          <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px;">Documentos registrados</div>
-          <div id="chart-container"></div>
+          <div class="card-title">Documentos registrados</div>
+          <div id="chart-container" style="min-height:200px"></div>
         </div>
         <div class="card">
-          <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px;">Últimos registros cargados</div>
-          <table class="ultimos-table" id="tabla-ultimos">
+          <div class="card-title">Últimos registros</div>
+          <table class="ultimos-table">
             <thead><tr><th>Doc</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Estado</th></tr></thead>
-            <tbody id="tbody-ultimos"><tr><td colspan="5" style="color:var(--text-3);text-align:center;padding:20px;">Cargando…</td></tr></tbody>
+            <tbody id="tbody-ultimos">
+              <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Cargando…</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
     </div>
-    <!-- /INICIO -->
 
-    <!-- ── COMUNICACIONES ── -->
+    <!-- COMUNICACIONES -->
     <div id="sec-comunicaciones" class="section">
-      <div class="section-header">
-        <div class="section-title"><div class="section-title-dot"></div>Comunicaciones</div>
-        <div class="section-actions">
-          <div id="obra-selector-com" class="obra-selector-wrap" style="display:none;margin:0">
-            <span class="obra-selector-label">Obra:</span>
-            <select class="obra-selector" id="sel-obra-com" onchange="cargarComunicaciones()"></select>
-          </div>
+      <div class="sec-header">
+        <div class="sec-title"><div class="sec-title-dot"></div>Comunicaciones</div>
+        <div class="sec-actions">
           <button class="btn btn-secondary btn-sm" onclick="cargarComunicaciones()">↻ Actualizar</button>
           <button class="btn btn-secondary btn-sm" onclick="exportarExcel()">↓ Excel</button>
         </div>
       </div>
-
-      <!-- Filtros rápidos -->
-      <div class="filtros-rapidos">
-        <button class="filtro-btn active-todos" id="f-todos" onclick="filtrarDoc('todos')">Todos</button>
-        <button class="filtro-btn" id="f-os"   onclick="filtrarDoc('OS')">OS</button>
-        <button class="filtro-btn" id="f-np"   onclick="filtrarDoc('NP')">NP</button>
-        <button class="filtro-btn" id="f-rm"   onclick="filtrarDoc('RM')">RM</button>
+      <!-- Filtros por tipo (fix f) -->
+      <div class="filtros-wrap">
+        <span class="filtro-label">Tipo:</span>
+        <button class="filtro-btn f-active-todos" id="f-todos" onclick="filtrarDoc('todos')">Todos</button>
+        <button class="filtro-btn" id="f-os" onclick="filtrarDoc('OS')">OS</button>
+        <button class="filtro-btn" id="f-np" onclick="filtrarDoc('NP')">NP</button>
+        <button class="filtro-btn" id="f-rm" onclick="filtrarDoc('RM')">RM</button>
       </div>
-
       <div class="dt-wrap">
-        <table id="tabla-comunicaciones" class="display" style="width:100%">
+        <table id="tabla-com" class="display" style="width:100%">
           <thead><tr id="thead-com"></tr></thead>
           <tbody id="tbody-com"></tbody>
         </table>
       </div>
     </div>
-    <!-- /COMUNICACIONES -->
 
-    <!-- ── ADMIN ── -->
+    <!-- ADMIN -->
     <div id="sec-admin" class="section">
-      <div class="section-header">
-        <div class="section-title"><div class="section-title-dot"></div>Administración</div>
+      <div class="sec-header">
+        <div class="sec-title"><div class="sec-title-dot"></div>Administración</div>
       </div>
-
       <div class="subtabs">
         <button class="subtab-btn active" onclick="showSubtab('obras')">Obras</button>
         <button class="subtab-btn"        onclick="showSubtab('usuarios')">Usuarios</button>
       </div>
-
-      <!-- Subtab Obras -->
       <div id="subtab-obras" class="subtab-panel active">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
           <button class="btn btn-primary btn-sm" onclick="abrirModalObra()">+ Nueva Obra</button>
         </div>
         <div class="dt-wrap">
@@ -721,10 +626,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
           </table>
         </div>
       </div>
-
-      <!-- Subtab Usuarios -->
       <div id="subtab-usuarios" class="subtab-panel">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
           <button class="btn btn-primary btn-sm" onclick="abrirModalUsuario()">+ Nuevo Usuario</button>
         </div>
         <div class="dt-wrap">
@@ -735,14 +638,14 @@ textarea.form-control { resize: vertical; min-height: 70px; }
         </div>
       </div>
     </div>
-    <!-- /ADMIN -->
 
   </div><!-- /main-content -->
 </div><!-- /app -->
 
-<!-- ══════════════════════════════════════════════
-     MODAL EDITAR COMUNICACIÓN
-══════════════════════════════════════════════ -->
+<!-- FAB carga (fix d) -->
+<button id="fab-carga" onclick="abrirModalCarga()" title="Nueva comunicación">+</button>
+
+<!-- MODAL EDITAR -->
 <div class="modal-overlay" id="modal-editar">
   <div class="modal">
     <div class="modal-header">
@@ -752,22 +655,13 @@ textarea.form-control { resize: vertical; min-height: 70px; }
     <div class="modal-body">
       <input type="hidden" id="edit-id">
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Documento</label>
-          <input type="text" class="form-control" id="edit-doc" disabled>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Número</label>
-          <input type="text" class="form-control" id="edit-num" disabled>
-        </div>
+        <div class="form-group"><label class="form-label">Doc</label><input type="text" class="form-control" id="edit-doc" disabled></div>
+        <div class="form-group"><label class="form-label">Número</label><input type="text" class="form-control" id="edit-num" disabled></div>
       </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Asunto</label>
-          <input type="text" class="form-control" id="edit-asunto" disabled>
-        </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Asunto</label><input type="text" class="form-control" id="edit-asunto" disabled></div>
       </div>
-      <div class="form-row single">
+      <div class="form-row">
         <div class="form-group">
           <label class="form-label">Estado</label>
           <select class="form-control" id="edit-estado">
@@ -776,18 +670,10 @@ textarea.form-control { resize: vertical; min-height: 70px; }
             <option value="Aviso">Aviso</option>
           </select>
         </div>
+        <div class="form-group"><label class="form-label">Doc. Referencia</label><input type="text" class="form-control" id="edit-docref" placeholder="Ej: NP 1001"></div>
       </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Doc. Referencia</label>
-          <input type="text" class="form-control" id="edit-docref" placeholder="Ej: NP 1001">
-        </div>
-      </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Observación</label>
-          <textarea class="form-control" id="edit-obs" rows="3"></textarea>
-        </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="edit-obs" rows="3"></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -797,9 +683,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     MODAL CARGA NUEVA COMUNICACIÓN
-══════════════════════════════════════════════ -->
+<!-- MODAL CARGA -->
 <div class="modal-overlay" id="modal-carga">
   <div class="modal" style="max-width:620px">
     <div class="modal-header">
@@ -808,42 +692,25 @@ textarea.form-control { resize: vertical; min-height: 70px; }
     </div>
     <div class="modal-body">
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Documento <span class="req">*</span></label>
-          <select class="form-control" id="carga-doc"></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Número <span class="req">*</span></label>
-          <input type="text" class="form-control" id="carga-num" placeholder="Ej: 1234">
-        </div>
+        <div class="form-group"><label class="form-label">Documento <span class="req">*</span></label><select class="form-control" id="carga-doc"></select></div>
+        <div class="form-group"><label class="form-label">Número <span class="req">*</span></label><input type="text" class="form-control" id="carga-num" placeholder="Ej: 1234"></div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Fecha <span class="req">*</span></label>
-          <input type="date" class="form-control" id="carga-fecha">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Asunto <span class="req">*</span></label>
-          <input type="text" class="form-control" id="carga-asunto" placeholder="Tema del documento">
-        </div>
+        <div class="form-group"><label class="form-label">Fecha <span class="req">*</span></label><input type="date" class="form-control" id="carga-fecha"></div>
+        <div class="form-group"><label class="form-label">Asunto <span class="req">*</span></label><input type="text" class="form-control" id="carga-asunto" placeholder="Tema del documento"></div>
       </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Resumen</label>
-          <textarea class="form-control" id="carga-resumen" rows="2" placeholder="Descripción breve (opcional)"></textarea>
-        </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Resumen</label><textarea class="form-control" id="carga-resumen" rows="2" placeholder="Descripción breve (opcional)"></textarea></div>
       </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Etiquetas</label>
-          <div class="etiquetas-wrap" id="etiquetas-wrap"></div>
-        </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Etiquetas</label><div class="etiquetas-wrap" id="etiquetas-wrap"></div></div>
       </div>
-      <div class="form-row single">
+      <div class="form-row full">
         <div class="form-group">
           <label class="form-label">Adjunto <span class="req">*</span></label>
-          <div class="file-zone" id="file-zone" onclick="document.getElementById('file-input').click()"
-               ondragover="fileDragOver(event)" ondrop="fileDrop(event)" ondragleave="fileDragLeave(event)">
+          <div class="file-zone" id="file-zone"
+               onclick="document.getElementById('file-input').click()"
+               ondragover="fileDragOver(event)" ondrop="fileDrop(event)" ondragleave="fileDragLeave()">
             <div class="file-zone-icon">📎</div>
             <div class="file-zone-text">Hacé clic o arrastrá el archivo aquí</div>
             <div class="file-zone-name" id="file-name" style="display:none"></div>
@@ -851,11 +718,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
           <input type="file" id="file-input" onchange="fileSeleccionado(this)">
         </div>
       </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Observación</label>
-          <textarea class="form-control" id="carga-obs" rows="2" placeholder="Notas adicionales (opcional)"></textarea>
-        </div>
+      <div class="form-row full">
+        <div class="form-group"><label class="form-label">Observación</label><textarea class="form-control" id="carga-obs" rows="2" placeholder="Notas adicionales (opcional)"></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -865,9 +729,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     MODAL OBRA (Admin)
-══════════════════════════════════════════════ -->
+<!-- MODAL OBRA -->
 <div class="modal-overlay" id="modal-obra">
   <div class="modal" style="max-width:420px">
     <div class="modal-header">
@@ -876,18 +738,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
     </div>
     <div class="modal-body">
       <input type="hidden" id="obra-fila">
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Número <span class="req">*</span></label>
-          <input type="text" class="form-control" id="obra-numero" placeholder="Ej: 1325">
-        </div>
-      </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Nombre <span class="req">*</span></label>
-          <input type="text" class="form-control" id="obra-nombre" placeholder="Nombre descriptivo de la obra">
-        </div>
-      </div>
+      <div class="form-row full"><div class="form-group"><label class="form-label">Número <span class="req">*</span></label><input type="text" class="form-control" id="obra-numero" placeholder="Ej: 1325"></div></div>
+      <div class="form-row full"><div class="form-group"><label class="form-label">Nombre <span class="req">*</span></label><input type="text" class="form-control" id="obra-nombre" placeholder="Nombre descriptivo"></div></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="cerrarModal('modal-obra')">Cancelar</button>
@@ -896,9 +748,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     MODAL USUARIO (Admin)
-══════════════════════════════════════════════ -->
+<!-- MODAL USUARIO -->
 <div class="modal-overlay" id="modal-usuario">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
@@ -907,18 +757,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
     </div>
     <div class="modal-body">
       <input type="hidden" id="usuario-fila">
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Email Google <span class="req">*</span></label>
-          <input type="email" class="form-control" id="usuario-email" placeholder="usuario@empresa.com.ar">
-        </div>
-      </div>
-      <div class="form-row single">
-        <div class="form-group">
-          <label class="form-label">Nombre y Apellido <span class="req">*</span></label>
-          <input type="text" class="form-control" id="usuario-nombre" placeholder="Nombre completo">
-        </div>
-      </div>
+      <div class="form-row full"><div class="form-group"><label class="form-label">Email Google <span class="req">*</span></label><input type="email" class="form-control" id="usuario-email" placeholder="usuario@empresa.com.ar"></div></div>
+      <div class="form-row full"><div class="form-group"><label class="form-label">Nombre y Apellido <span class="req">*</span></label><input type="text" class="form-control" id="usuario-nombre" placeholder="Nombre completo"></div></div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Perfil <span class="req">*</span></label>
@@ -929,10 +769,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
             <option value="administrador">Administrador</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Obra <span class="req">*</span></label>
-          <select class="form-control" id="usuario-obra"></select>
-        </div>
+        <div class="form-group"><label class="form-label">Obra <span class="req">*</span></label><select class="form-control" id="usuario-obra"></select></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -942,7 +779,6 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   </div>
 </div>
 
-<!-- Spinner + Toast -->
 <div id="spinner"><div class="spinner-ring"></div></div>
 <div id="toast"></div>
 
@@ -952,30 +788,25 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 <script>
 'use strict';
 
-/* ─────────────────────────────────────────────
-   CONFIGURACIÓN — completar antes de desplegar
-───────────────────────────────────────────── */
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';   // URL de la Web App publicada
-const CLIENT_ID  = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.0.0';
+/* ── CONFIGURACIÓN ── */
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
+const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
+const VERSION   = 'V4.1.0';
 
-/* ─────────────────────────────────────────────
-   ESTADO GLOBAL
-───────────────────────────────────────────── */
+/* ── ESTADO GLOBAL ── */
 const estado = {
-  usuario        : null,   // { email, nombre, perfil, obra, obraDesc }
-  dtComunicaciones: null,  // instancia DataTable
+  usuario         : null,
+  dtCom           : null,
   dtObras         : null,
   dtUsuarios      : null,
-  obrasAdmin      : [],    // lista de obras para admin
+  obrasAdmin      : [],
   etiquetas       : [],
   docs            : [],
-  fileSeleccionado: null,  // File object
+  fileSeleccionado: null,
+  filtroCom       : 'todos',  // filtro activo en Comunicaciones
 };
 
-/* ─────────────────────────────────────────────
-   GAS POST — mismo patrón que MdT
-───────────────────────────────────────────── */
+/* ── GAS POST ── */
 async function gasPost(payload) {
   const resp = await fetch(GAS_URL, {
     method : 'POST',
@@ -983,30 +814,20 @@ async function gasPost(payload) {
     body   : JSON.stringify(payload)
   });
   const raw = await resp.text();
-  let parsed;
-  try { parsed = JSON.parse(raw); }
+  try { return JSON.parse(raw); }
   catch { throw new Error('Respuesta no-JSON: ' + raw.slice(0, 120)); }
-  return parsed;
 }
 
-/* ─────────────────────────────────────────────
-   AUTENTICACIÓN — patrón v11.3 (MdT)
-───────────────────────────────────────────── */
+/* ── AUTH — patrón MdT v11.3 ── */
 function _esperarGoogleYEjecutar(fn) {
-  if (typeof google !== 'undefined') { fn(); }
-  else {
-    const iv = setInterval(() => {
-      if (typeof google !== 'undefined') { clearInterval(iv); fn(); }
-    }, 200);
-  }
+  if (typeof google !== 'undefined') fn();
+  else { const iv = setInterval(() => { if (typeof google !== 'undefined') { clearInterval(iv); fn(); } }, 200); }
 }
 
 function inicializarGoogle() {
   google.accounts.id.initialize({
-    client_id            : CLIENT_ID,
-    callback             : manejarCredencial,
-    auto_select          : false,
-    cancel_on_tap_outside: false
+    client_id: CLIENT_ID, callback: manejarCredencial,
+    auto_select: false, cancel_on_tap_outside: false
   });
   google.accounts.id.renderButton(
     document.getElementById('g-btn-wrap'),
@@ -1028,7 +849,7 @@ window.onload = function () {
     } catch (e) { /* JSON inválido */ }
     localStorage.removeItem('libroobra_usuario_v4');
   }
-  mostrarLogin();
+  document.getElementById('login-screen').style.display = 'flex';
   _esperarGoogleYEjecutar(inicializarGoogle);
 };
 
@@ -1036,29 +857,18 @@ async function manejarCredencial(response) {
   try {
     const b64     = response.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
     const payload = JSON.parse(atob(b64));
-
     spinner(true);
     const data = await gasPost({ action: 'verificar', email: payload.email });
     spinner(false);
-
     if (!data.autorizado) {
       document.getElementById('denied-email').textContent = payload.email;
-      mostrarDenegado();
+      document.getElementById('login-screen').style.display  = 'none';
+      document.getElementById('denied-screen').style.display = 'flex';
       return;
     }
-
-    // Sesión verificada — guardar en estado y localStorage
-    estado.usuario = {
-      email   : data.email,
-      nombre  : data.nombre,
-      perfil  : data.perfil,
-      obra    : data.obra,
-      obraDesc: data.obraDesc,
-      _ts     : Date.now()
-    };
+    estado.usuario = { email: data.email, nombre: data.nombre, perfil: data.perfil, obra: data.obra, obraDesc: data.obraDesc, _ts: Date.now() };
     localStorage.setItem('libroobra_usuario_v4', JSON.stringify(estado.usuario));
     iniciarApp();
-
   } catch (e) {
     spinner(false);
     mostrarToast('⚠ Error al iniciar sesión: ' + e.message);
@@ -1069,112 +879,99 @@ function cerrarSesion() {
   localStorage.removeItem('libroobra_usuario_v4');
   estado.usuario = null;
   if (typeof google !== 'undefined') google.accounts.id.disableAutoSelect();
-  document.getElementById('app').style.display            = 'none';
-  document.getElementById('denied-screen').style.display  = 'none';
-  mostrarLogin();
+  document.getElementById('app').style.display           = 'none';
+  document.getElementById('denied-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display  = 'flex';
 }
 
-function mostrarLogin() {
-  document.getElementById('login-screen').style.display   = 'flex';
-  document.getElementById('app').style.display            = 'none';
-  document.getElementById('denied-screen').style.display  = 'none';
-}
-
-function mostrarDenegado() {
-  document.getElementById('login-screen').style.display   = 'none';
-  document.getElementById('app').style.display            = 'none';
-  document.getElementById('denied-screen').style.display  = 'flex';
-}
-
-/* ─────────────────────────────────────────────
-   INICIO DE APP
-───────────────────────────────────────────── */
+/* ── INICIO APP ── */
 async function iniciarApp() {
   const u = estado.usuario;
-
   document.getElementById('login-screen').style.display  = 'none';
   document.getElementById('denied-screen').style.display = 'none';
   document.getElementById('app').style.display           = 'flex';
 
-  // Topbar
-  document.getElementById('topbar-user').textContent = u.nombre;
-  document.getElementById('topbar-obra').textContent  = u.obra + ' · ' + u.obraDesc;
+  document.getElementById('hdr-name').textContent = u.nombre;
+  document.getElementById('hdr-obra').textContent = u.obra + ' · ' + u.obraDesc;
 
-  // Visibilidad nav según perfil
+  // FAB visible solo para usuario
   if (u.perfil === 'usuario') {
-    document.getElementById('nav-carga').style.display = 'inline-flex';
+    document.getElementById('fab-carga').style.display = 'flex';
+    cargarCatalogos();
   }
   if (u.perfil === 'administrador') {
     document.getElementById('nav-admin').style.display = 'inline-flex';
-    // Cargar lista de obras para selectors
+    document.getElementById('obra-sel-header').style.display = 'flex';
+    document.getElementById('hdr-obra').style.display = 'none';
     await cargarObrasAdmin();
   }
 
-  // Cargar catálogos para el formulario de carga
-  if (u.perfil === 'usuario') {
-    cargarCatalogos();
-  }
-
-  // Ir a inicio
   showSection('inicio');
   cargarDashboard();
 }
 
-/* ─────────────────────────────────────────────
-   NAVEGACIÓN
-───────────────────────────────────────────── */
+/* ── NAVEGACIÓN ── */
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
+  document.querySelectorAll('.hdr-nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('sec-' + id).classList.add('active');
-  const navBtn = document.getElementById('nav-' + id);
-  if (navBtn) navBtn.classList.add('active');
-
-  // Carga lazy por sección
+  const btn = document.getElementById('nav-' + id);
+  if (btn) btn.classList.add('active');
   if (id === 'comunicaciones') cargarComunicaciones();
-  if (id === 'admin') {
-    cargarTablaObras();
-    cargarTablaUsuarios();
-  }
+  if (id === 'admin') { cargarTablaObras(); cargarTablaUsuarios(); }
 }
 
-/* ─────────────────────────────────────────────
-   DASHBOARD
-───────────────────────────────────────────── */
+function onObraChange() {
+  // Admin cambió obra en selector global → recargar sección activa
+  const secActiva = document.querySelector('.section.active');
+  if (!secActiva) return;
+  const id = secActiva.id.replace('sec-', '');
+  if (id === 'inicio') cargarDashboard();
+  if (id === 'comunicaciones') cargarComunicaciones();
+}
+
+/* ── OBRA ACTUAL ── */
+function obraActual() {
+  const u = estado.usuario;
+  if (!u) return null;
+  if (u.perfil === 'administrador') {
+    const sel = document.getElementById('sel-obra-global');
+    return sel ? sel.value : null;
+  }
+  return u.obra;
+}
+
+/* ── DASHBOARD ── */
 async function cargarDashboard() {
-  const obra = obraActual('dash');
+  const obra = obraActual();
   if (!obra) return;
   spinner(true);
   try {
     const data = await gasPost({ action: 'getDashboard', email: estado.usuario.email, obra });
     if (!data.ok) throw new Error(data.error);
-
-    document.getElementById('dash-total-os').textContent = data.totalOS;
-    document.getElementById('dash-total-np').textContent = data.totalNP;
-    document.getElementById('dash-total-rm').textContent = data.totalRM;
-    document.getElementById('dash-sub-os').textContent   = data.ultimos30.OS + ' en últimos 30 días';
-    document.getElementById('dash-sub-np').textContent   = data.ultimos30.NP + ' en últimos 30 días';
-    document.getElementById('dash-sub-rm').textContent   = data.ultimos30.RM + ' en últimos 30 días';
-
+    document.getElementById('dash-os').textContent     = data.totalOS;
+    document.getElementById('dash-np').textContent     = data.totalNP;
+    document.getElementById('dash-rm').textContent     = data.totalRM;
+    document.getElementById('dash-os-sub').textContent = data.ultimos30.OS + ' en últimos 30 días';
+    document.getElementById('dash-np-sub').textContent = data.ultimos30.NP + ' en últimos 30 días';
+    document.getElementById('dash-rm-sub').textContent = data.ultimos30.RM + ' en últimos 30 días';
     renderUltimos5(data.ultimos5);
     renderGrafico(data.totalOS, data.totalNP, data.totalRM);
   } catch (e) {
-    mostrarToast('⚠ Error al cargar dashboard: ' + e.message);
+    mostrarToast('⚠ Error dashboard: ' + e.message);
   } finally { spinner(false); }
 }
 
 function renderUltimos5(items) {
   const tbody = document.getElementById('tbody-ultimos');
   if (!items || !items.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-3);text-align:center;padding:20px;">Sin registros</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Sin registros</td></tr>';
     return;
   }
   tbody.innerHTML = items.map(r => `
     <tr>
       <td><span class="badge badge-${r.doc.toLowerCase()}">${r.doc}</span></td>
-      <td>${r.num}</td>
-      <td>${r.fecha}</td>
+      <td>${r.num}</td><td>${r.fecha}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.asunto}</td>
       <td><span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span></td>
     </tr>`).join('');
@@ -1183,142 +980,151 @@ function renderUltimos5(items) {
 function renderGrafico(os, np, rm) {
   google.charts.load('current', { packages: ['corechart'] });
   google.charts.setOnLoadCallback(() => {
-    const dataChart = google.visualization.arrayToDataTable([
+    const dt = google.visualization.arrayToDataTable([
       ['Tipo', 'Cantidad', { role: 'style' }, { role: 'annotation' }],
-      ['OS', os, '#e8a020', String(os)],
-      ['NP', np, '#2196a8', String(np)],
-      ['RM', rm, '#5a6472', String(rm)]
+      ['OS', os, '#d97706', String(os)],
+      ['NP', np, '#0891b2', String(np)],
+      ['RM', rm, '#475569', String(rm)]
     ]);
-    const options = {
+    new google.visualization.ColumnChart(document.getElementById('chart-container')).draw(dt, {
       legend: 'none', bar: { groupWidth: '55%' },
       chartArea: { width: '80%', height: '75%' },
-      vAxis: { minValue: 0, gridlines: { color: '#e8ecf1' }, textStyle: { color: '#8a9aaa', fontSize: 11 } },
-      hAxis: { textStyle: { color: '#4a5a6a', fontSize: 12, bold: true } },
+      vAxis: { minValue: 0, gridlines: { color: '#e2e8f0' }, textStyle: { color: '#94a3b8', fontSize: 11 } },
+      hAxis: { textStyle: { color: '#1e293b', fontSize: 12, bold: true } },
       backgroundColor: 'transparent',
       annotations: { alwaysOutside: false, textStyle: { fontSize: 13, bold: true, color: '#fff' } }
-    };
-    new google.visualization.ColumnChart(document.getElementById('chart-container')).draw(dataChart, options);
+    });
   });
 }
 
-/* ─────────────────────────────────────────────
-   COMUNICACIONES
-───────────────────────────────────────────── */
+/* ── COMUNICACIONES ── */
 async function cargarComunicaciones() {
-  const obra = obraActual('com');
+  const obra = obraActual();
   if (!obra) return;
   spinner(true);
   try {
     const data = await gasPost({ action: 'getComunicaciones', email: estado.usuario.email, obra });
     if (!data.ok) throw new Error(data.error);
-    renderTablaComunicaciones(data.headers, data.data);
+    renderTablaCom(data.data);
   } catch (e) {
-    mostrarToast('⚠ Error al cargar comunicaciones: ' + e.message);
+    mostrarToast('⚠ Error comunicaciones: ' + e.message);
   } finally { spinner(false); }
 }
 
-function renderTablaComunicaciones(headers, rows) {
-  // Destruir instancia anterior si existe
-  if (estado.dtComunicaciones) {
-    estado.dtComunicaciones.destroy();
-    estado.dtComunicaciones = null;
-  }
+function renderTablaCom(rows) {
+  if (estado.dtCom) { estado.dtCom.destroy(); estado.dtCom = null; }
 
-  // Columnas que mostramos (por índice según COL_LO_*)
-  // 0:ID  1:Obra  2:Doc  3:Num  4:Fecha  5:Asunto  7:Etiqueta  9:AdjUrl  11:Estado
-  const colsVer = [
-    { idx: 2,  title: 'Doc'       },
-    { idx: 3,  title: 'N°'        },
-    { idx: 4,  title: 'Fecha'     },
-    { idx: 5,  title: 'Asunto'    },
-    { idx: 7,  title: 'Etiquetas' },
-    { idx: 12, title: 'Estado'    },
-    { idx: 8,  title: 'Adjunto'   }, // nombre archivo + url en idx 9
-    { idx: 0,  title: ''          }, // ID oculto para edición
-  ];
-
-  // Thead
+  // Thead fijo
   document.getElementById('thead-com').innerHTML =
-    colsVer.map(c => `<th>${c.title}</th>`).join('') + '<th></th>';
+    '<th>Doc</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Etiquetas</th><th>Estado</th><th>Adjunto</th><th style="display:none">_id</th><th></th>';
 
-  // Tbody
-  const tbody = document.getElementById('tbody-com');
-  tbody.innerHTML = rows.map(row => {
-    const doc     = row[2] || '';
-    const estado_ = row[12] || 'Activo';
-    const adjNom  = row[8]  || '';
-    const adjUrl  = row[9]  || '';
-    const id      = row[0];
+  document.getElementById('tbody-com').innerHTML = rows.map(row => {
+    const [id,,doc,num,fecha,asunto,,etiq,,adjUrl,,,,estado_,] = row;
+    const adjunto = row[8];
+    const esAnulada = estado_ === 'Anulado' ? ' class="row-anulada"' : '';
+    const esConsulta = estado.usuario.perfil === 'consulta';
 
-    const badgeDoc    = `<span class="badge badge-${doc.toLowerCase()}">${doc}</span>`;
-    const badgeEstado = `<span class="badge badge-${estado_.toLowerCase()}">${estado_}</span>`;
-    const adjHtml     = adjUrl
-      ? `<a href="${adjUrl}" target="_blank" class="adj-link" title="${adjNom}">📎</a>`
-      : (adjNom ? `<span title="${adjNom}" style="color:var(--text-3)">📎</span>` : '');
+    // Adjunto: si tiene URL abre directo; si no, intenta recuperar del GAS (fix c)
+    let adjHtml = '';
+    if (adjunto || adjUrl) {
+      if (adjUrl) {
+        adjHtml = `<a href="${adjUrl}" target="_blank" class="adj-btn has-url" title="${adjunto}">📎</a>`;
+      } else {
+        // Registro V3 — sin URL guardada, intentar recuperar al click
+        adjHtml = `<button class="adj-btn" onclick="abrirAdjunto(this,'${adjunto}',${id})" title="${adjunto}">📎</button>`;
+      }
+    }
 
-    const anulada = estado_ === 'Anulado' ? ' class="anulada"' : '';
+    const editBtn = esConsulta ? '' :
+      `<button class="btn-edit-row" onclick='abrirModalEditar(${JSON.stringify(row)})'>Editar</button>`;
 
-    return `<tr${anulada}>
-      <td>${badgeDoc}</td>
-      <td>${row[3]}</td>
-      <td>${row[4]}</td>
-      <td style="max-width:260px">${row[5] || ''}</td>
-      <td>${_renderEtiquetas(row[7])}</td>
-      <td>${badgeEstado}</td>
+    return `<tr${esAnulada}>
+      <td><span class="badge badge-${doc.toLowerCase()}">${doc}</span></td>
+      <td>${num}</td><td>${fecha}</td>
+      <td style="max-width:280px">${asunto||''}</td>
+      <td>${_renderEtiq(etiq)}</td>
+      <td><span class="badge badge-${(estado_||'activo').toLowerCase()}">${estado_||'Activo'}</span></td>
       <td style="text-align:center">${adjHtml}</td>
       <td style="display:none">${id}</td>
-      <td><button class="btn-icon" onclick='abrirModalEditar(${JSON.stringify(row)})' title="Editar" style="${estado.usuario.perfil==='consulta'?'display:none':''}">✏️</button></td>
+      <td>${editBtn}</td>
     </tr>`;
   }).join('');
 
-  // DataTables
   $.fn.dataTable.moment('DD/MM/YYYY');
-  estado.dtComunicaciones = $('#tabla-comunicaciones').DataTable({
+  estado.dtCom = $('#tabla-com').DataTable({
     language   : _dtLang(),
-    pageLength : 20,
-    order      : [[2, 'desc']],  // por fecha desc
+    pageLength : 25,
+    order      : [[2, 'desc']],
     columnDefs : [
-      { targets: 7, visible: false },   // ID oculto
-      { targets: [0,5,6,8], orderable: false }
+      { targets: 7, visible: false },
+      { targets: [0, 4, 6, 8], orderable: false }
     ],
     dom: '<"dt-top"lf>rt<"dt-bot"ip>'
   });
-}
 
-function _renderEtiquetas(str) {
-  if (!str) return '';
-  return str.split(',').map(e => e.trim()).filter(Boolean)
-    .map(e => `<span style="display:inline-block;background:var(--surface-2);border-radius:20px;padding:1px 7px;font-size:10px;margin:1px;">${e}</span>`)
-    .join('');
-}
-
-function filtrarDoc(tipo) {
-  document.querySelectorAll('.filtro-btn').forEach(b => {
-    b.className = 'filtro-btn';
-  });
-  if (tipo === 'todos') {
-    document.getElementById('f-todos').classList.add('active-todos');
-    estado.dtComunicaciones?.search('').draw();
-  } else {
-    document.getElementById('f-' + tipo.toLowerCase()).classList.add('active-' + tipo.toLowerCase());
-    estado.dtComunicaciones?.search(tipo).draw();
+  // Reaplicar filtro activo (fix f) — usa columns().search() independiente
+  if (estado.filtroCom !== 'todos') {
+    estado.dtCom.columns(0).search(estado.filtroCom).draw();
   }
 }
 
+// Filtro por tipo de doc — columns().search() no interfiere con búsqueda global (fix f)
+function filtrarDoc(tipo) {
+  estado.filtroCom = tipo;
+  document.querySelectorAll('.filtro-btn').forEach(b => {
+    b.className = 'filtro-btn';
+  });
+  const ids = { todos: 'f-todos', OS: 'f-os', NP: 'f-np', RM: 'f-rm' };
+  const clases = { todos: 'f-active-todos', OS: 'f-active-os', NP: 'f-active-np', RM: 'f-active-rm' };
+  document.getElementById(ids[tipo]).classList.add(clases[tipo]);
+
+  if (!estado.dtCom) return;
+  if (tipo === 'todos') estado.dtCom.columns(0).search('').draw();
+  else                  estado.dtCom.columns(0).search('^' + tipo + '$', true, false).draw();
+}
+
+// Abrir adjunto V3 — recupera URL desde Drive (fix c)
+async function abrirAdjunto(btn, nombreArchivo, id) {
+  if (!nombreArchivo) return;
+  btn.textContent = '⏳';
+  try {
+    const data = await gasPost({
+      action  : 'getUrlAdjunto',
+      email   : estado.usuario.email,
+      nombre  : nombreArchivo,
+      id      : id
+    });
+    if (data.ok && data.url) {
+      btn.outerHTML = `<a href="${data.url}" target="_blank" class="adj-btn has-url" title="${nombreArchivo}">📎</a>`;
+      window.open(data.url, '_blank');
+    } else {
+      btn.textContent = '📎';
+      mostrarToast('⚠ No se encontró el archivo en Drive');
+    }
+  } catch (e) {
+    btn.textContent = '📎';
+    mostrarToast('⚠ Error al buscar el archivo');
+  }
+}
+
+function _renderEtiq(str) {
+  if (!str) return '';
+  return str.split(',').map(e => e.trim()).filter(Boolean)
+    .map(e => `<span class="etiq-pill">${e}</span>`).join('');
+}
+
 function exportarExcel() {
-  if (!estado.dtComunicaciones) return;
-  const filas = estado.dtComunicaciones.rows({ search: 'applied' }).data().toArray();
+  if (!estado.dtCom) return;
+  const filas = estado.dtCom.rows({ search: 'applied' }).data().toArray();
   if (!filas.length) { mostrarToast('⚠ No hay datos para exportar'); return; }
   const headers = ['Doc','N°','Fecha','Asunto','Etiquetas','Estado','Adjunto'];
-  const ws   = XLSX.utils.aoa_to_sheet([headers, ...filas.map(r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6]])]);
-  const wb   = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...filas.map(r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6]])]);
+  const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Comunicaciones');
   XLSX.writeFile(wb, 'LibroObra_Comunicaciones.xlsx');
 }
 
-/* ─────────────────────────────────────────────
-   MODAL EDITAR
-───────────────────────────────────────────── */
+/* ── MODAL EDITAR ── */
 function abrirModalEditar(row) {
   if (estado.usuario.perfil === 'consulta') return;
   document.getElementById('edit-id').value     = row[0];
@@ -1328,8 +1134,7 @@ function abrirModalEditar(row) {
   document.getElementById('edit-estado').value = row[12] || 'Activo';
   document.getElementById('edit-docref').value = row[11] || '';
   document.getElementById('edit-obs').value    = row[10] || '';
-  document.getElementById('modal-editar-titulo').textContent =
-    'Editar: ' + row[2] + ' ' + row[3];
+  document.getElementById('modal-editar-titulo').textContent = 'Editar: ' + row[2] + ' ' + row[3];
   abrirModal('modal-editar');
 }
 
@@ -1341,11 +1146,7 @@ async function guardarEdicion() {
   if (!id) return;
   spinner(true);
   try {
-    const data = await gasPost({
-      action: 'editarComunicacion',
-      email : estado.usuario.email,
-      id, observacion: obs, docRef: ref, estado: est
-    });
+    const data = await gasPost({ action: 'editarComunicacion', email: estado.usuario.email, id, observacion: obs, docRef: ref, estado: est });
     if (!data.ok) throw new Error(data.error);
     cerrarModal('modal-editar');
     mostrarToast('✓ Registro actualizado');
@@ -1355,9 +1156,7 @@ async function guardarEdicion() {
   } finally { spinner(false); }
 }
 
-/* ─────────────────────────────────────────────
-   MODAL CARGA
-───────────────────────────────────────────── */
+/* ── CARGA ── */
 async function cargarCatalogos() {
   try {
     const [rDocs, rEtiq] = await Promise.all([
@@ -1370,29 +1169,15 @@ async function cargarCatalogos() {
 }
 
 function abrirModalCarga() {
-  // Poblar select de docs
-  const selDoc = document.getElementById('carga-doc');
-  selDoc.innerHTML = estado.docs.map(d =>
-    `<option value="${d.codigo}">${d.codigo} — ${d.descripcion}</option>`
-  ).join('');
-
-  // Poblar etiquetas
-  const wrap = document.getElementById('etiquetas-wrap');
-  wrap.innerHTML = estado.etiquetas.map(e => `
-    <label class="etiqueta-chip" onclick="toggleEtiqueta(this)">
-      <input type="checkbox" value="${e}"> ${e}
-    </label>`).join('');
-
-  // Reset campos
-  ['carga-num','carga-asunto','carga-resumen','carga-obs'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  document.getElementById('carga-doc').innerHTML = estado.docs.map(d =>
+    `<option value="${d.codigo}">${d.codigo} — ${d.descripcion}</option>`).join('');
+  document.getElementById('etiquetas-wrap').innerHTML = estado.etiquetas.map(e =>
+    `<label class="etiq-chip" onclick="toggleEtiqueta(this)"><input type="checkbox" value="${e}"> ${e}</label>`).join('');
+  ['carga-num','carga-asunto','carga-resumen','carga-obs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('carga-fecha').value = new Date().toISOString().split('T')[0];
   document.getElementById('file-name').style.display = 'none';
-  document.getElementById('file-zone').classList.remove('dragover');
   document.getElementById('file-input').value = '';
   estado.fileSeleccionado = null;
-
   abrirModal('modal-carga');
 }
 
@@ -1401,10 +1186,8 @@ function toggleEtiqueta(label) {
   cb.checked = !cb.checked;
   label.classList.toggle('checked', cb.checked);
 }
-
 function fileSeleccionado(input) {
-  const f = input.files[0];
-  if (!f) return;
+  const f = input.files[0]; if (!f) return;
   estado.fileSeleccionado = f;
   document.getElementById('file-name').textContent = f.name;
   document.getElementById('file-name').style.display = 'block';
@@ -1413,50 +1196,32 @@ function fileDragOver(e)  { e.preventDefault(); document.getElementById('file-zo
 function fileDragLeave()  { document.getElementById('file-zone').classList.remove('dragover'); }
 function fileDrop(e) {
   e.preventDefault(); fileDragLeave();
-  const f = e.dataTransfer.files[0];
-  if (!f) return;
+  const f = e.dataTransfer.files[0]; if (!f) return;
   estado.fileSeleccionado = f;
   document.getElementById('file-name').textContent = f.name;
   document.getElementById('file-name').style.display = 'block';
 }
 
 async function guardarCarga() {
-  // Validación
   const doc   = document.getElementById('carga-doc').value;
   const num   = document.getElementById('carga-num').value.trim();
   const fecha = document.getElementById('carga-fecha').value;
   const asunt = document.getElementById('carga-asunto').value.trim();
   const file  = estado.fileSeleccionado;
-
   if (!doc || !num || !fecha || !asunt || !file) {
     mostrarToast('⚠ Completá todos los campos obligatorios y adjuntá un archivo');
     return;
   }
-
-  const etiquetas = Array.from(document.querySelectorAll('#etiquetas-wrap .etiqueta-chip input:checked'))
-    .map(cb => cb.value);
-  const resumen = document.getElementById('carga-resumen').value;
-  const obs     = document.getElementById('carga-obs').value;
+  const etiquetas = Array.from(document.querySelectorAll('#etiquetas-wrap .etiq-chip input:checked')).map(cb => cb.value);
+  const resumen   = document.getElementById('carga-resumen').value;
+  const obs       = document.getElementById('carga-obs').value;
 
   spinner(true);
   document.getElementById('btn-guardar-carga').disabled = true;
-
   try {
-    // 1. Verificar duplicado
-    const dup = await gasPost({
-      action: 'verificarDuplicado',
-      email : estado.usuario.email,
-      obra  : estado.usuario.obra,
-      doc, num
-    });
-    if (dup.duplicado) {
-      mostrarToast(`⚠ Ya existe ${doc} N° ${num} para esta obra`);
-      spinner(false);
-      document.getElementById('btn-guardar-carga').disabled = false;
-      return;
-    }
+    const dup = await gasPost({ action: 'verificarDuplicado', email: estado.usuario.email, obra: estado.usuario.obra, doc, num });
+    if (dup.duplicado) { mostrarToast(`⚠ Ya existe ${doc} N° ${num} para esta obra`); return; }
 
-    // 2. Leer archivo como base64
     const base64 = await new Promise((res, rej) => {
       const r = new FileReader();
       r.onload  = () => res(r.result.split(',')[1]);
@@ -1464,34 +1229,15 @@ async function guardarCarga() {
       r.readAsDataURL(file);
     });
 
-    // 3. Upload a Drive
-    const upData = await gasPost({
-      action  : 'uploadAdjunto',
-      email   : estado.usuario.email,
-      base64,
-      fileName: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      doc, num
-    });
+    const upData = await gasPost({ action: 'uploadAdjunto', email: estado.usuario.email, base64, fileName: file.name, mimeType: file.type || 'application/octet-stream', doc, num });
     if (!upData.ok) throw new Error(upData.error);
 
-    // 4. Guardar registro en Sheet
-    const saveData = await gasPost({
-      action    : 'guardarRegistro',
-      email     : estado.usuario.email,
-      doc, num, fecha, asunto: asunt, resumen, etiquetas, obs,
-      adjunto   : upData.nombre,
-      adjuntoUrl: upData.url
-    });
+    const saveData = await gasPost({ action: 'guardarRegistro', email: estado.usuario.email, doc, num, fecha, asunto: asunt, resumen, etiquetas, obs, adjunto: upData.nombre, adjuntoUrl: upData.url });
     if (!saveData.ok) throw new Error(saveData.error);
 
     cerrarModal('modal-carga');
     mostrarToast('✓ Comunicación registrada correctamente');
-    // Si estamos en comunicaciones, recargar
-    if (document.getElementById('sec-comunicaciones').classList.contains('active')) {
-      cargarComunicaciones();
-    }
-
+    if (document.getElementById('sec-comunicaciones').classList.contains('active')) cargarComunicaciones();
   } catch (e) {
     mostrarToast('⚠ Error: ' + e.message);
   } finally {
@@ -1500,43 +1246,34 @@ async function guardarCarga() {
   }
 }
 
-/* ─────────────────────────────────────────────
-   ADMIN — OBRAS
-───────────────────────────────────────────── */
+/* ── ADMIN OBRAS ── */
 async function cargarTablaObras() {
   spinner(true);
   try {
     const data = await gasPost({ action: 'getObras', email: estado.usuario.email });
     if (!data.ok) throw new Error(data.error);
-
     if (estado.dtObras) { estado.dtObras.destroy(); estado.dtObras = null; }
-
     document.getElementById('tbody-obras').innerHTML = data.obras.map(o => `
       <tr>
-        <td>${o.numero}</td>
-        <td>${o.nombre}</td>
+        <td>${o.numero}</td><td>${o.nombre}</td>
         <td><span class="badge badge-${o.estado === 'Activo' ? 'activo' : 'anulado'}">${o.estado}</span></td>
-        <td>
+        <td style="display:flex;gap:6px">
           <button class="btn btn-secondary btn-sm" onclick='abrirModalObra(${JSON.stringify(o)})'>Editar</button>
-          ${o.estado === 'Activo'
-            ? `<button class="btn btn-danger btn-sm" onclick="desactivarObra('${o.numero}')">Desactivar</button>`
-            : ''}
+          ${o.estado === 'Activo' ? `<button class="btn btn-danger btn-sm" onclick="desactivarObra('${o.numero}')">Desactivar</button>` : ''}
         </td>
       </tr>`).join('');
-
     estado.dtObras = $('#tabla-obras').DataTable({ language: _dtLang(), pageLength: 20 });
-  } catch (e) {
-    mostrarToast('⚠ Error al cargar obras: ' + e.message);
-  } finally { spinner(false); }
+  } catch (e) { mostrarToast('⚠ Error obras: ' + e.message); }
+  finally { spinner(false); }
 }
 
 function abrirModalObra(obra) {
-  const esNueva = !obra;
-  document.getElementById('modal-obra-titulo').textContent = esNueva ? 'Nueva obra' : 'Editar obra';
+  const nueva = !obra;
+  document.getElementById('modal-obra-titulo').textContent = nueva ? 'Nueva obra' : 'Editar obra';
   document.getElementById('obra-fila').value   = obra?._fila || '';
   document.getElementById('obra-numero').value = obra?.numero || '';
   document.getElementById('obra-nombre').value = obra?.nombre || '';
-  document.getElementById('obra-numero').disabled = !esNueva; // no se puede cambiar el número
+  document.getElementById('obra-numero').disabled = !nueva;
   abrirModal('modal-obra');
 }
 
@@ -1547,18 +1284,12 @@ async function guardarObra() {
   if (!numero || !nombre) { mostrarToast('⚠ Completá número y nombre'); return; }
   spinner(true);
   try {
-    const data = await gasPost({
-      action: 'saveObra', email: estado.usuario.email,
-      numero, nombre, _fila: fila ? Number(fila) : null
-    });
+    const data = await gasPost({ action: 'saveObra', email: estado.usuario.email, numero, nombre, _fila: fila ? Number(fila) : null });
     if (!data.ok) throw new Error(data.error);
-    cerrarModal('modal-obra');
-    mostrarToast('✓ ' + data.mensaje);
-    cargarTablaObras();
-    await cargarObrasAdmin(); // refrescar selectores
-  } catch (e) {
-    mostrarToast('⚠ Error: ' + e.message);
-  } finally { spinner(false); }
+    cerrarModal('modal-obra'); mostrarToast('✓ ' + data.mensaje);
+    cargarTablaObras(); await cargarObrasAdmin();
+  } catch (e) { mostrarToast('⚠ Error: ' + e.message); }
+  finally { spinner(false); }
 }
 
 async function desactivarObra(numero) {
@@ -1567,62 +1298,43 @@ async function desactivarObra(numero) {
   try {
     const data = await gasPost({ action: 'desactivarObra', email: estado.usuario.email, numero });
     if (!data.ok) throw new Error(data.error);
-    mostrarToast('✓ ' + data.mensaje);
-    cargarTablaObras();
-    await cargarObrasAdmin();
-  } catch (e) {
-    mostrarToast('⚠ Error: ' + e.message);
-  } finally { spinner(false); }
+    mostrarToast('✓ ' + data.mensaje); cargarTablaObras(); await cargarObrasAdmin();
+  } catch (e) { mostrarToast('⚠ Error: ' + e.message); }
+  finally { spinner(false); }
 }
 
-/* ─────────────────────────────────────────────
-   ADMIN — USUARIOS
-───────────────────────────────────────────── */
+/* ── ADMIN USUARIOS ── */
 async function cargarTablaUsuarios() {
   spinner(true);
   try {
     const data = await gasPost({ action: 'getUsuarios', email: estado.usuario.email });
     if (!data.ok) throw new Error(data.error);
-
     if (estado.dtUsuarios) { estado.dtUsuarios.destroy(); estado.dtUsuarios = null; }
-
     document.getElementById('tbody-usuarios').innerHTML = data.usuarios.map(u => `
       <tr>
-        <td>${u.email}</td>
-        <td>${u.nombre}</td>
-        <td>${u.perfil}</td>
-        <td>${u.obra}</td>
+        <td>${u.email}</td><td>${u.nombre}</td><td>${u.perfil}</td><td>${u.obra}</td>
         <td><span class="badge badge-${u.estado === 'Activo' ? 'activo' : 'anulado'}">${u.estado}</span></td>
-        <td>
+        <td style="display:flex;gap:6px">
           <button class="btn btn-secondary btn-sm" onclick='abrirModalUsuario(${JSON.stringify(u)})'>Editar</button>
-          ${u.estado === 'Activo'
-            ? `<button class="btn btn-danger btn-sm" onclick="desactivarUsuario('${u.email}')">Desactivar</button>`
-            : ''}
+          ${u.estado === 'Activo' ? `<button class="btn btn-danger btn-sm" onclick="desactivarUsuario('${u.email}')">Desactivar</button>` : ''}
         </td>
       </tr>`).join('');
-
     estado.dtUsuarios = $('#tabla-usuarios').DataTable({ language: _dtLang(), pageLength: 20 });
-  } catch (e) {
-    mostrarToast('⚠ Error al cargar usuarios: ' + e.message);
-  } finally { spinner(false); }
+  } catch (e) { mostrarToast('⚠ Error usuarios: ' + e.message); }
+  finally { spinner(false); }
 }
 
 function abrirModalUsuario(usuario) {
-  const esNuevo = !usuario;
-  document.getElementById('modal-usuario-titulo').textContent = esNuevo ? 'Nuevo usuario' : 'Editar usuario';
+  const nueva = !usuario;
+  document.getElementById('modal-usuario-titulo').textContent = nueva ? 'Nuevo usuario' : 'Editar usuario';
   document.getElementById('usuario-fila').value   = usuario?._fila || '';
   document.getElementById('usuario-email').value  = usuario?.email || '';
   document.getElementById('usuario-nombre').value = usuario?.nombre || '';
   document.getElementById('usuario-perfil').value = usuario?.perfil || '';
-  document.getElementById('usuario-email').disabled = !esNuevo;
-
-  // Poblar select de obras
+  document.getElementById('usuario-email').disabled = !nueva;
   const selObra = document.getElementById('usuario-obra');
   selObra.innerHTML = '<option value="">— Todas —</option>' +
-    estado.obrasAdmin.map(o =>
-      `<option value="${o.numero}" ${usuario?.obra === o.numero ? 'selected' : ''}>${o.numero} — ${o.nombre}</option>`
-    ).join('');
-
+    estado.obrasAdmin.map(o => `<option value="${o.numero}" ${usuario?.obra === o.numero ? 'selected' : ''}>${o.numero} — ${o.nombre}</option>`).join('');
   abrirModal('modal-usuario');
 }
 
@@ -1632,24 +1344,14 @@ async function guardarUsuario() {
   const perfil      = document.getElementById('usuario-perfil').value;
   const obra        = document.getElementById('usuario-obra').value;
   const fila        = document.getElementById('usuario-fila').value;
-  if (!emailTarget || !nombre || !perfil || !obra) {
-    mostrarToast('⚠ Completá todos los campos obligatorios');
-    return;
-  }
+  if (!emailTarget || !nombre || !perfil || !obra) { mostrarToast('⚠ Completá todos los campos'); return; }
   spinner(true);
   try {
-    const data = await gasPost({
-      action: 'saveUsuario', email: estado.usuario.email,
-      emailTarget, nombre, perfil, obra,
-      _fila: fila ? Number(fila) : null
-    });
+    const data = await gasPost({ action: 'saveUsuario', email: estado.usuario.email, emailTarget, nombre, perfil, obra, _fila: fila ? Number(fila) : null });
     if (!data.ok) throw new Error(data.error);
-    cerrarModal('modal-usuario');
-    mostrarToast('✓ ' + data.mensaje);
-    cargarTablaUsuarios();
-  } catch (e) {
-    mostrarToast('⚠ Error: ' + e.message);
-  } finally { spinner(false); }
+    cerrarModal('modal-usuario'); mostrarToast('✓ ' + data.mensaje); cargarTablaUsuarios();
+  } catch (e) { mostrarToast('⚠ Error: ' + e.message); }
+  finally { spinner(false); }
 }
 
 async function desactivarUsuario(emailTarget) {
@@ -1658,104 +1360,54 @@ async function desactivarUsuario(emailTarget) {
   try {
     const data = await gasPost({ action: 'desactivarUsuario', email: estado.usuario.email, emailTarget });
     if (!data.ok) throw new Error(data.error);
-    mostrarToast('✓ ' + data.mensaje);
-    cargarTablaUsuarios();
-  } catch (e) {
-    mostrarToast('⚠ Error: ' + e.message);
-  } finally { spinner(false); }
+    mostrarToast('✓ ' + data.mensaje); cargarTablaUsuarios();
+  } catch (e) { mostrarToast('⚠ Error: ' + e.message); }
+  finally { spinner(false); }
 }
 
-/* ─────────────────────────────────────────────
-   ADMIN — cargar obras para selectores
-───────────────────────────────────────────── */
+/* ── OBRAS ADMIN (selector header) ── */
 async function cargarObrasAdmin() {
   try {
     const data = await gasPost({ action: 'getObrasSelector', email: estado.usuario.email });
     if (!data.ok) throw new Error(data.error);
     estado.obrasAdmin = data.obras || [];
-    _poblarSelectorObra('sel-obra-dash');
-    _poblarSelectorObra('sel-obra-com');
+    const sel = document.getElementById('sel-obra-global');
+    sel.innerHTML = estado.obrasAdmin.map(o => `<option value="${o.numero}">${o.numero} — ${o.nombre}</option>`).join('');
   } catch (e) { console.error('Error obras admin:', e); }
 }
 
-function _poblarSelectorObra(id) {
-  const sel = document.getElementById(id);
-  if (!sel) return;
-  sel.innerHTML = estado.obrasAdmin.map(o =>
-    `<option value="${o.numero}">${o.numero} — ${o.nombre}</option>`
-  ).join('');
-  sel.closest('.obra-selector-wrap').style.display = 'flex';
-}
-
-/* ─────────────────────────────────────────────
-   SUBTABS ADMIN
-───────────────────────────────────────────── */
+/* ── SUBTABS ADMIN ── */
 function showSubtab(id) {
-  document.querySelectorAll('.subtab-btn').forEach((b, i) => {
-    const ids = ['obras','usuarios'];
-    b.classList.toggle('active', ids[i] === id);
-  });
+  const ids = ['obras', 'usuarios'];
+  document.querySelectorAll('.subtab-btn').forEach((b, i) => b.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.subtab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('subtab-' + id).classList.add('active');
 }
 
-/* ─────────────────────────────────────────────
-   HELPERS: obra actual según perfil
-───────────────────────────────────────────── */
-function obraActual(ctx) {
-  const u = estado.usuario;
-  if (!u) return null;
-  if (u.perfil === 'administrador') {
-    const sel = document.getElementById('sel-obra-' + ctx);
-    return sel ? sel.value : null;
-  }
-  return u.obra;
-}
-
-/* ─────────────────────────────────────────────
-   MODALES — abrir/cerrar
-───────────────────────────────────────────── */
-function abrirModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-function cerrarModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-// Cerrar al click en overlay
+/* ── MODALES ── */
+function abrirModal(id)  { document.getElementById(id).classList.add('open'); }
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', e => {
-    if (e.target === el) el.classList.remove('open');
-  });
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
 
-/* ─────────────────────────────────────────────
-   SPINNER / TOAST
-───────────────────────────────────────────── */
-function spinner(on) {
-  document.getElementById('spinner').classList.toggle('on', on);
-}
-
+/* ── SPINNER / TOAST ── */
+function spinner(on) { document.getElementById('spinner').classList.toggle('on', on); }
 let _toastTimer;
 function mostrarToast(msg, dur = 3200) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => t.classList.remove('show'), dur);
 }
 
-/* ─────────────────────────────────────────────
-   DATATABLES — idioma español
-───────────────────────────────────────────── */
+/* ── DATATABLES LANG ── */
 function _dtLang() {
   return {
-    search          : 'Buscar:',
-    lengthMenu      : 'Mostrar _MENU_ registros',
-    info            : 'Mostrando _START_ a _END_ de _TOTAL_ registros',
-    infoEmpty       : 'Sin registros',
-    infoFiltered    : '(filtrado de _MAX_ registros)',
-    zeroRecords     : 'No se encontraron resultados',
-    paginate        : { first: '«', previous: '‹', next: '›', last: '»' }
+    search: 'Buscar:', lengthMenu: 'Mostrar _MENU_ registros',
+    info: 'Mostrando _START_ a _END_ de _TOTAL_', infoEmpty: 'Sin registros',
+    infoFiltered: '(filtrado de _MAX_)', zeroRecords: 'No se encontraron resultados',
+    paginate: { first: '«', previous: '‹', next: '›', last: '»' }
   };
 }
 </script>
