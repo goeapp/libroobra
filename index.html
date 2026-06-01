@@ -1272,6 +1272,8 @@ async function abrirHistorial(id, doc, num) {
     document.getElementById('modal-hist-body').innerHTML = `<div style="color:var(--danger);text-align:center;padding:20px">⚠ Error: ${e.message}</div>`;
   }
 }
+
+function renderUltimos5(items) {
   const tbody = document.getElementById('tbody-ultimos');
   if (!items || !items.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Sin registros</td></tr>';
