@@ -536,6 +536,11 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .tl-obs   { font-size:.75rem; color:var(--muted); font-style:italic; }
 .tl-usr   { font-size:.67rem; color:var(--muted); margin-top:2px; }
 
+.tl-delta { text-align:center; font-size:.65rem; color:var(--muted); padding:2px 0 6px; position:relative; }
+.tl-delta::before { content:''; display:block; width:1px; height:8px; background:var(--border); margin:0 auto 2px; }
+.tl-actual-label { font-size:.65rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+.tl-dot-actual { border-color:var(--accent) !important; box-shadow:0 0 0 2px rgba(217,119,6,.2); }
+
 /* badge clickeable con ícono historial */
 .badge-with-hist { cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
 .badge-with-hist:hover { opacity:.8; }
@@ -909,7 +914,8 @@ const estado = {
   etiquetas       : [],
   docs            : [],
   fileSeleccionado: null,
-  filtroCom       : 'todos',  // filtro activo en Comunicaciones
+  filtroCom       : 'todos',
+  rowsCom         : [],   // fix a: rows crudos para exportar
 };
 
 /* ── GAS POST ── */
@@ -1075,6 +1081,25 @@ async function cargarDashboard() {
 /* ── GRÁFICO — Chart.js con selector Acumulado / Trimestral (fix b/c) ── */
 let _chartPorMes = {}, _chartTrimOffset = 0, _chartInst = null, _chartMode = 'acum';
 
+// Dibuja el valor encima de cada barra directamente en el canvas (fix c)
+function _drawBarLabels(chart) {
+  const ctx2 = chart.ctx;
+  ctx2.save();
+  ctx2.font = '600 11px DM Sans, sans-serif';
+  ctx2.textAlign = 'center';
+  ctx2.textBaseline = 'bottom';
+  chart.data.datasets.forEach((ds, di) => {
+    const meta = chart.getDatasetMeta(di);
+    meta.data.forEach((bar, i) => {
+      const val = ds.data[i];
+      if (!val) return;
+      ctx2.fillStyle = '#1e293b';
+      ctx2.fillText(val, bar.x, bar.y - 3);
+    });
+  });
+  ctx2.restore();
+}
+
 function setChartMode(mode) {
   _chartMode = mode;
   document.getElementById('chart-btn-acum').classList.toggle('active', mode === 'acum');
@@ -1090,7 +1115,6 @@ function chartNavegar(dir) {
 }
 
 function renderChartAcum() {
-  // Suma total por tipo sobre todos los meses disponibles
   let totalOS = 0, totalNP = 0, totalRM = 0;
   Object.values(_chartPorMes).forEach(v => {
     totalOS += v.OS; totalNP += v.NP; totalRM += v.RM;
@@ -1103,7 +1127,9 @@ function renderChartAcum() {
       labels: ['OS', 'NP', 'RM'],
       datasets: [{
         data: [totalOS, totalNP, totalRM],
-        backgroundColor: ['#d97706', '#0891b2', '#64748b'],
+        backgroundColor: ['#d97706', '#0891b2', '#94a3b8'],
+        borderColor    : ['#b45309', '#0e7490', '#64748b'],
+        borderWidth: 1,
         borderRadius: 6
       }]
     },
@@ -1111,11 +1137,14 @@ function renderChartAcum() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' documentos' } }
+        tooltip: { enabled: false }
       },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 12 }, color: '#1e293b' } },
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 12, weight: '600' }, color: '#1e293b' } },
         y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { font: { family: 'DM Sans', size: 11 }, precision: 0 } }
+      },
+      animation: {
+        onComplete: function() { _drawBarLabels(this); }
       }
     }
   });
@@ -1153,17 +1182,23 @@ function renderChartTrim() {
     data: {
       labels,
       datasets: [
-        { label: 'OS', data: dataOS, backgroundColor: '#d97706', borderRadius: 4 },
-        { label: 'NP', data: dataNP, backgroundColor: '#0891b2', borderRadius: 4 },
-        { label: 'RM', data: dataRM, backgroundColor: '#64748b', borderRadius: 4 }
+        { label: 'OS', data: dataOS, backgroundColor: '#d97706', borderColor: '#b45309', borderWidth:1, borderRadius: 4 },
+        { label: 'NP', data: dataNP, backgroundColor: '#0891b2', borderColor: '#0e7490', borderWidth:1, borderRadius: 4 },
+        { label: 'RM', data: dataRM, backgroundColor: '#94a3b8', borderColor: '#64748b', borderWidth:1, borderRadius: 4 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 11 }, boxWidth: 12, padding: 10 } } },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 11 }, boxWidth: 12, padding: 10 } },
+        tooltip: { enabled: false }
+      },
       scales: {
         x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } },
         y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { font: { family: 'DM Sans', size: 11 }, precision: 0 } }
+      },
+      animation: {
+        onComplete: function() { _drawBarLabels(this); }
       }
     }
   });
@@ -1285,7 +1320,7 @@ function _fmtFechaLarga(iso) {
 }
 
 /* ── HISTORIAL (fix b) ── */
-async function abrirHistorial(id, doc, num) {
+async function abrirHistorial(id, doc, num, estadoActual, fechaActual, usuarioActual) {
   document.getElementById('modal-hist-titulo').textContent = `Historial: ${doc} N° ${num}`;
   document.getElementById('modal-hist-body').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Cargando…</div>';
   abrirModal('modal-historial');
@@ -1293,27 +1328,75 @@ async function abrirHistorial(id, doc, num) {
     const data = await gasPost({ action: 'getHistorial', email: estado.usuario.email, id });
     if (!data.ok) throw new Error(data.error);
     const hist = data.historial || [];
-    if (!hist.length) {
-      document.getElementById('modal-hist-body').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Sin historial registrado.</div>';
+
+    // Agregar estado actual como último ítem (b.1)
+    const todos = [...hist, {
+      estado    : estadoActual || 'Activo',
+      fechaHora : fechaActual  || '',
+      usuario   : usuarioActual|| '',
+      observacion: '',
+      docRef    : '',
+      esActual  : true
+    }];
+
+    if (todos.length === 1 && todos[0].esActual) {
+      // Solo el estado actual, sin historial previo
+      document.getElementById('modal-hist-body').innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Sin historial de ediciones.</div>';
       return;
     }
+
     document.getElementById('modal-hist-body').innerHTML = `
       <div class="timeline">
-        ${hist.map(h => `
+        ${todos.map((h, i) => {
+          // Tiempo entre este ítem y el anterior (b.2)
+          let deltaHtml = '';
+          if (i > 0) {
+            const prev = todos[i - 1];
+            const delta = _diffFechaHora(prev.fechaHora, h.fechaHora);
+            if (delta) deltaHtml = `<div class="tl-delta">${delta}</div>`;
+          }
+          const dotClass = (h.estado||'activo').toLowerCase();
+          const esActual = h.esActual ? ' tl-dot-actual' : '';
+          return `${deltaHtml}
           <div class="tl-item">
-            <div class="tl-dot ${(h.estado||'activo').toLowerCase()}">${(h.estado||'—').slice(0,2).toUpperCase()}</div>
+            <div class="tl-dot ${dotClass}${esActual}" title="${h.esActual ? 'Estado actual' : ''}">
+              ${(h.estado||'—').slice(0,2).toUpperCase()}
+            </div>
             <div class="tl-body">
+              ${h.esActual ? '<div class="tl-actual-label">Estado actual</div>' : ''}
               <div class="tl-fecha">${h.fechaHora}</div>
               <div class="tl-estado">${h.estado || 'Activo'}</div>
               ${h.observacion ? `<div class="tl-obs">${h.observacion}</div>` : ''}
               ${h.docRef      ? `<div class="tl-obs">Ref: ${h.docRef}</div>` : ''}
               <div class="tl-usr">por ${h.usuario}</div>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>`;
   } catch (e) {
     document.getElementById('modal-hist-body').innerHTML = `<div style="color:var(--danger);text-align:center;padding:20px">⚠ Error: ${e.message}</div>`;
   }
+}
+
+// Calcular diferencia legible entre dos fechaHora "DD/MM/YYYY HH:MM" (b.2)
+function _diffFechaHora(a, b) {
+  if (!a || !b) return '';
+  try {
+    const parse = s => {
+      const [fecha, hora] = s.split(' ');
+      const [d, m, y] = fecha.split('/');
+      const [hh, mm] = (hora||'00:00').split(':');
+      return new Date(y, m-1, d, hh, mm);
+    };
+    const diff = Math.abs(parse(b) - parse(a));
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60)   return `${mins} min`;
+    const hs = Math.floor(mins / 60);
+    if (hs < 24)     return `${hs} hs ${mins % 60} min`;
+    const dias = Math.floor(hs / 24);
+    const hRest = hs % 24;
+    return hRest > 0 ? `${dias} días ${hRest} hs` : `${dias} días`;
+  } catch(e) { return ''; }
 }
 
 function renderUltimos5(items) {
@@ -1347,6 +1430,7 @@ async function cargarComunicaciones() {
 
 function renderTablaCom(rows) {
   if (estado.dtCom) { estado.dtCom.destroy(); estado.dtCom = null; }
+  estado.rowsCom = rows;  // fix a: guardar crudos para exportar
 
   // Thead fijo
   document.getElementById('thead-com').innerHTML =
@@ -1378,7 +1462,7 @@ function renderTablaCom(rows) {
       <td style="max-width:280px">${asunto||''}</td>
       <td>${_renderEtiq(etiq)}</td>
       <td><span class="badge badge-${(estado_||'activo').toLowerCase()} badge-with-hist"
-            onclick='abrirHistorial(${id},"${doc}","${num}")'
+            onclick='abrirHistorial(${id},"${doc}","${num}","${estado_||'Activo'}","${row[13]||''}","${row[14]||''}")'
             title="Ver historial">${estado_||'Activo'} ${ICO.history}</span></td>
       <td style="text-align:center">${adjHtml}</td>
       <td style="display:none">${id}</td>
@@ -1450,11 +1534,32 @@ function _renderEtiq(str) {
 }
 
 function exportarExcel() {
-  if (!estado.dtCom) return;
-  const filas = estado.dtCom.rows({ search: 'applied' }).data().toArray();
-  if (!filas.length) { mostrarToast('⚠ No hay datos para exportar'); return; }
-  const headers = ['Doc','N°','Fecha','Asunto','Etiquetas','Estado','Adjunto'];
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...filas.map(r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6]])]);
+  const rows = estado.rowsCom;
+  if (!rows || !rows.length) { mostrarToast('⚠ No hay datos para exportar'); return; }
+
+  // Aplicar filtro activo igual que la tabla
+  const filtro = estado.filtroCom;
+  const filtradas = filtro === 'todos' ? rows : rows.filter(r => r[2] === filtro);
+  if (!filtradas.length) { mostrarToast('⚠ No hay datos con el filtro activo'); return; }
+
+  // Columnas: Doc, N°, Fecha, Asunto, Resumen, Etiquetas, Estado, Doc Ref, Observación, Usuario
+  const headers = ['Doc','N°','Fecha','Asunto','Resumen','Etiquetas','Estado','Doc Ref','Observación','Usuario'];
+  const data = filtradas.map(r => [
+    r[2],   // Doc
+    r[3],   // Num
+    r[4],   // Fecha (ya formateada DD/MM/YYYY)
+    r[5],   // Asunto
+    r[6],   // Resumen
+    r[7],   // Etiquetas
+    r[12],  // Estado
+    r[11],  // Doc Ref
+    r[10],  // Observación
+    r[14]   // Usuario
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  // Ancho de columnas
+  ws['!cols'] = [6,8,12,40,30,30,10,15,30,25].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Comunicaciones');
   XLSX.writeFile(wb, 'LibroObra_Comunicaciones.xlsx');
