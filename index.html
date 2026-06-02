@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_3.html — LibroObra V4.3.0 -->
-<!-- Cambios v4.2:
-  a) Heatmap anual de actividad en Dashboard (adaptado de ClimaObra)
-  b) Mini-modal de línea de tiempo para historial de ediciones
-  c) Gráfico trimestral con Chart.js (reemplaza Google Charts) + nav ◀ ▶
-  d) Botón "+ Nueva" en header de Comunicaciones reemplaza FAB flotante
-  e) Íconos SVG monocromáticos (reemplaza emojis 📎)
-  f) Modal Nueva Comunicación: Asunto full-width, fecha sin futuro, Resumen obligatorio, UX mejorada
-  g) Fix: columna Estado mostraba FechaHora (destructuring incorrecto)
+<!-- index_libroobra_v4_5.html — LibroObra V4.5.0 -->
+<!-- Cambios v4.5:
+  a) Nueva sección "Hitos" — KPIs / Timeline SVG panzoom / DataTable / Modal CRUD
+  b) PDF exportable de Hitos (jsPDF + html2canvas)
+  c) Tres nuevas acciones GAS: getHitos, guardarHito, desactivarHito
+  d) CSS nuevo: KPI cards, timeline card, badges hitos, btn-del-row
+  e) Dependencias: panzoom@9.4.3, jsPDF@2.5.1, html2canvas@1.4.1
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.3.0</title>
+<title>LibroObra V4.5.0</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +26,9 @@
 <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/datetime-moment.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/panzoom@9.4.3/dist/panzoom.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
 /* ══════════════════════════════════════════════
@@ -556,6 +557,51 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 /* badge clickeable con ícono historial */
 .badge-with-hist { cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
 .badge-with-hist:hover { opacity:.8; }
+
+/* ══════════════════════════════════════════════
+   HITOS — KPI CARDS
+══════════════════════════════════════════════ */
+.hi-kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px; }
+.hi-kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); border-top:3px solid var(--border); }
+.hi-kpi.k-total { border-top-color:var(--accent2); }
+.hi-kpi.k-done  { border-top-color:#0F6E56; }
+.hi-kpi.k-pend  { border-top-color:var(--muted); }
+.hi-kpi.k-late  { border-top-color:#A32D2D; }
+.hi-kpi.k-next  { border-top-color:#185FA5; }
+.hi-kpi-val { font-family:'Bebas Neue',sans-serif; font-size:2rem; line-height:1; letter-spacing:1px; }
+.hi-kpi.k-total .hi-kpi-val { color:var(--accent2); }
+.hi-kpi.k-done  .hi-kpi-val { color:#0F6E56; }
+.hi-kpi.k-pend  .hi-kpi-val { color:var(--muted); }
+.hi-kpi.k-late  .hi-kpi-val { color:#A32D2D; }
+.hi-kpi.k-next  .hi-kpi-val { color:#185FA5; font-size:1.1rem; margin-top:4px; }
+.hi-kpi-lbl { font-size:.67rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; }
+
+/* ══════════════════════════════════════════════
+   HITOS — TIMELINE CARD
+══════════════════════════════════════════════ */
+.hi-tl-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:18px; overflow:hidden; }
+.hi-tl-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+.hi-tl-title  { font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+.hi-tl-hint   { font-size:.67rem; color:var(--muted); font-style:italic; }
+#hi-panzoom-wrap { overflow:hidden; position:relative; height:140px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); cursor:grab; }
+#hi-panzoom-wrap:active { cursor:grabbing; }
+#hi-panzoom-inner { display:inline-block; padding:10px 40px 10px 60px; transform-origin:0 0; min-width:100%; }
+.hi-row-labels { position:absolute; left:8px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:46px; pointer-events:none; z-index:5; }
+.hi-row-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+.hi-legend { display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+.hi-leg-item { display:flex; align-items:center; gap:5px; font-size:.68rem; color:var(--muted); }
+.hi-leg-d { width:10px; height:10px; transform:rotate(45deg); border-radius:1px; flex-shrink:0; }
+
+/* ══════════════════════════════════════════════
+   HITOS — BADGES Y TABLA
+══════════════════════════════════════════════ */
+.badge-hi-done { background:#E1F5EE; color:#0F6E56; }
+.badge-hi-late { background:#FCEBEB; color:#A32D2D; }
+.badge-hi-next { background:#E6F1FB; color:#185FA5; }
+.badge-hi-fut  { background:var(--bg); color:var(--muted); border:1px solid var(--border); }
+
+.btn-del-row { background:none; border:1px solid #fecaca; color:#991b1b; font-size:.75rem; padding:3px 10px; border-radius:var(--radius-sm); transition:all .15s; font-family:inherit; cursor:pointer; }
+.btn-del-row:hover { background:#fee2e2; }
 </style>
 </head>
 <body>
@@ -565,7 +611,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.3.0 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.5.0 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -593,6 +639,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <nav class="hdr-nav">
       <button class="hdr-nav-btn" id="nav-inicio"         onclick="showSection('inicio')">Inicio</button>
       <button class="hdr-nav-btn" id="nav-comunicaciones" onclick="showSection('comunicaciones')">Comunicaciones</button>
+      <button class="hdr-nav-btn" id="nav-hitos"          onclick="showSection('hitos')">Hitos</button>
       <button class="hdr-nav-btn" id="nav-admin"          onclick="showSection('admin')" style="display:none">Admin</button>
     </nav>
     <!-- Selector obra admin (en header) -->
@@ -603,7 +650,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.3.0</span>
+    <span class="hdr-version">V4.5.0</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -706,6 +753,83 @@ textarea.form-control { resize: vertical; min-height: 66px; }
         <table id="tabla-com" class="display" style="width:100%">
           <thead><tr id="thead-com"></tr></thead>
           <tbody id="tbody-com"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HITOS -->
+    <div id="sec-hitos" class="section">
+      <div class="sec-header">
+        <div class="sec-title"><div class="sec-title-dot"></div>Hitos</div>
+        <div class="sec-actions">
+          <button id="btn-nuevo-hito" class="btn btn-primary btn-sm" onclick="abrirModalHito()" style="display:none">+ Nuevo hito</button>
+          <button class="btn btn-secondary btn-sm" onclick="cargarHitos()">↻ Actualizar</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportarHitosPDF()">↓ PDF</button>
+        </div>
+      </div>
+      <!-- KPI row -->
+      <div class="hi-kpi-row">
+        <div class="hi-kpi k-total">
+          <div class="hi-kpi-lbl">Total</div>
+          <div class="hi-kpi-val" id="hi-kpi-total">—</div>
+        </div>
+        <div class="hi-kpi k-done">
+          <div class="hi-kpi-lbl">Cumplidos</div>
+          <div class="hi-kpi-val" id="hi-kpi-done">—</div>
+        </div>
+        <div class="hi-kpi k-pend">
+          <div class="hi-kpi-lbl">Pendientes</div>
+          <div class="hi-kpi-val" id="hi-kpi-pend">—</div>
+        </div>
+        <div class="hi-kpi k-late">
+          <div class="hi-kpi-lbl">Vencidos</div>
+          <div class="hi-kpi-val" id="hi-kpi-late">—</div>
+        </div>
+        <div class="hi-kpi k-next">
+          <div class="hi-kpi-lbl">Próximo</div>
+          <div class="hi-kpi-val" id="hi-kpi-next">—</div>
+        </div>
+      </div>
+      <!-- Timeline card -->
+      <div class="hi-tl-card">
+        <div class="hi-tl-header">
+          <span class="hi-tl-title">Línea de tiempo</span>
+          <span class="hi-tl-hint">Drag para navegar · Rueda para zoom · Doble click = reset</span>
+        </div>
+        <div id="hi-panzoom-wrap">
+          <div class="hi-row-labels">
+            <span class="hi-row-lbl">Prevista</span>
+            <span class="hi-row-lbl">Real</span>
+          </div>
+          <div id="hi-panzoom-inner">
+            <svg id="hi-timeline-svg" height="110" style="display:block;min-width:600px"></svg>
+          </div>
+        </div>
+        <div class="hi-legend">
+          <div class="hi-leg-item"><div class="hi-leg-d" style="background:#B4B2A9"></div>Prevista</div>
+          <div class="hi-leg-item"><div class="hi-leg-d" style="background:#0F6E56"></div>Cumplido</div>
+          <div class="hi-leg-item"><div class="hi-leg-d" style="background:#A32D2D"></div>Vencido</div>
+          <div class="hi-leg-item"><div class="hi-leg-d" style="background:#185FA5"></div>Próximo</div>
+          <div class="hi-leg-item"><div class="hi-leg-d" style="background:transparent;border:1.5px solid #B4B2A9"></div>Futuro</div>
+          <div class="hi-leg-item"><div style="width:10px;height:2px;background:#d97706;border-radius:1px"></div>Hoy</div>
+        </div>
+      </div>
+      <!-- Tabla -->
+      <div class="dt-wrap">
+        <table id="tabla-hitos" class="display" style="width:100%">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Prevista</th>
+              <th>Real</th>
+              <th>Cumplido</th>
+              <th>Estado</th>
+              <th>Observación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-hitos"></tbody>
         </table>
       </div>
     </div>
@@ -882,6 +1006,62 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   </div>
 </div>
 
+<!-- MODAL HITO -->
+<div class="modal-overlay" id="modal-hito">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-hito-titulo">Nuevo hito</span>
+      <button class="modal-close" onclick="cerrarModal('modal-hito')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="hito-fila">
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input type="text" class="form-control" id="hito-nombre" placeholder="Nombre del hito">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Orden <span class="req">*</span></label>
+          <input type="number" class="form-control" id="hito-orden" min="1" placeholder="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fecha prevista <span class="req">*</span></label>
+          <input type="date" class="form-control" id="hito-fecha-prevista">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha real</label>
+          <input type="date" class="form-control" id="hito-fecha-real">
+          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">Default = fecha prevista</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Cumplido</label>
+          <select class="form-control" id="hito-cumplido">
+            <option value="NO">NO</option>
+            <option value="SI">SI</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Observación</label>
+          <textarea class="form-control" id="hito-obs" rows="2" placeholder="Notas opcionales"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-hito')">Cancelar</button>
+      <button class="btn btn-primary"   onclick="guardarHito()" id="btn-guardar-hito">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- DIV PDF HITOS (fuera de pantalla) -->
+<div id="pdf-render-hitos" style="position:fixed;left:-9999px;top:0;width:750px;background:#fff;z-index:-1;font-family:'DM Sans',sans-serif;padding:32px"></div>
+
 <div id="spinner"><div class="spinner-ring"></div></div>
 <div id="toast"></div>
 <div id="hm-tooltip"></div>
@@ -914,7 +1094,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.3.0';
+const VERSION   = 'V4.5.0';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -922,12 +1102,15 @@ const estado = {
   dtCom           : null,
   dtObras         : null,
   dtUsuarios      : null,
+  dtHitos         : null,
   obrasAdmin      : [],
   etiquetas       : [],
   docs            : [],
   fileSeleccionado: null,
   filtroCom       : 'todos',
-  rowsCom         : [],   // fix a: rows crudos para exportar
+  rowsCom         : [],   // rows crudos para exportar
+  hitosData       : [],
+  _panzoomHitos   : null,
 };
 
 /* ── GAS POST ── */
@@ -1020,7 +1203,8 @@ async function iniciarApp() {
 
   // Botón "Nueva" en Comunicaciones — visible solo para usuario
   if (u.perfil === 'usuario') {
-    document.getElementById('btn-nueva-com').style.display = 'inline-flex';
+    document.getElementById('btn-nueva-com').style.display  = 'inline-flex';
+    document.getElementById('btn-nuevo-hito').style.display = 'inline-flex';
     cargarCatalogos();
   }
   if (u.perfil === 'administrador') {
@@ -1043,6 +1227,7 @@ function showSection(id) {
   if (btn) btn.classList.add('active');
   if (id === 'comunicaciones') cargarComunicaciones();
   if (id === 'admin') { cargarTablaObras(); cargarTablaUsuarios(); }
+  if (id === 'hitos') cargarHitos();
 }
 
 function onObraChange() {
@@ -1052,6 +1237,7 @@ function onObraChange() {
   const id = secActiva.id.replace('sec-', '');
   if (id === 'inicio') cargarDashboard();
   if (id === 'comunicaciones') cargarComunicaciones();
+  if (id === 'hitos') cargarHitos();
 }
 
 /* ── OBRA ACTUAL ── */
@@ -1700,6 +1886,421 @@ async function guardarCarga() {
     spinner(false);
     document.getElementById('btn-guardar-carga').disabled = false;
   }
+}
+
+/* ══════════════════════════════════════════════
+   HITOS
+══════════════════════════════════════════════ */
+
+/* ── Helpers de fecha ── */
+function _p2(n) { return String(n).padStart(2, '0'); }
+
+function _parseISOFromDDMM(str) {
+  // "DD/MM/YYYY" → Date
+  if (!str) return null;
+  const [d, m, y] = str.split('/');
+  if (!d || !m || !y) return null;
+  return new Date(Number(y), Number(m) - 1, Number(d));
+}
+
+function _ddmmToISO(str) {
+  // "DD/MM/YYYY" → "YYYY-MM-DD" (para input[type=date])
+  if (!str) return '';
+  const [d, m, y] = str.split('/');
+  if (!d || !m || !y) return '';
+  return `${y}-${_p2(Number(m))}-${_p2(Number(d))}`;
+}
+
+function _fmtDDMM(date) {
+  // Date → "DD/MM/YYYY"
+  if (!date || isNaN(date)) return '—';
+  return `${_p2(date.getDate())}/${_p2(date.getMonth() + 1)}/${date.getFullYear()}`;
+}
+
+/* ── Clasificar hito ── */
+function _clasificarHito(h, hoy) {
+  // returns: 'done' | 'late' | 'next' | 'fut'
+  if (h.cumplido === 'SI') return 'done';
+  const prev = _parseISOFromDDMM(h.fechaPrevista);
+  if (!prev) return 'fut';
+  if (prev < hoy) return 'late';
+  return 'fut'; // será sobreescrito por 'next' en renderKPIsHitos
+}
+
+/* ── Cargar hitos desde GAS ── */
+async function cargarHitos() {
+  const obra = obraActual();
+  if (!obra) return;
+  spinner(true);
+  try {
+    const data = await gasPost({ action: 'getHitos', email: estado.usuario.email, obra });
+    if (!data.ok) throw new Error(data.error);
+    estado.hitosData = data.hitos || [];
+    renderKPIsHitos(estado.hitosData);
+    renderTimelineHitos(estado.hitosData);
+    renderTablaHitos(estado.hitosData);
+  } catch (e) { mostrarToast('⚠ Error hitos: ' + e.message); }
+  finally { spinner(false); }
+}
+
+/* ── KPIs ── */
+function renderKPIsHitos(hitos) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  let total = hitos.length, done = 0, late = 0, nextDate = null, nextNombre = '—';
+
+  hitos.forEach(h => {
+    if (h.cumplido === 'SI') { done++; return; }
+    const prev = _parseISOFromDDMM(h.fechaPrevista);
+    if (prev && prev < hoy) { late++; return; }
+    // pendiente futuro
+    if (prev && (!nextDate || prev < nextDate)) { nextDate = prev; nextNombre = h.nombre; }
+  });
+
+  const pend = total - done - late;
+
+  document.getElementById('hi-kpi-total').textContent = total;
+  document.getElementById('hi-kpi-done').textContent  = done;
+  document.getElementById('hi-kpi-pend').textContent  = pend < 0 ? 0 : pend;
+  document.getElementById('hi-kpi-late').textContent  = late;
+  document.getElementById('hi-kpi-next').textContent  = nextDate ? `${_fmtDDMM(nextDate)} — ${nextNombre}` : '—';
+}
+
+/* ── Timeline SVG ── */
+function renderTimelineHitos(hitos) {
+  const svg = document.getElementById('hi-timeline-svg');
+  const wrap = document.getElementById('hi-panzoom-wrap');
+
+  if (!hitos.length) {
+    svg.innerHTML = '<text x="20" y="55" font-family="DM Sans,sans-serif" font-size="13" fill="#94a3b8">Sin hitos para mostrar</text>';
+    svg.setAttribute('width', '600');
+    return;
+  }
+
+  // Destruir panzoom anterior
+  if (estado._panzoomHitos) { try { estado._panzoomHitos.dispose(); } catch(e){} estado._panzoomHitos = null; }
+
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+
+  // Identificar próximo
+  let nextDate = null;
+  hitos.filter(h => h.cumplido !== 'SI').forEach(h => {
+    const p = _parseISOFromDDMM(h.fechaPrevista);
+    if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
+  });
+
+  // Rango de fechas (todas las previstas + reales)
+  const todasFechas = [];
+  hitos.forEach(h => {
+    const p = _parseISOFromDDMM(h.fechaPrevista);
+    const r = _parseISOFromDDMM(h.fechaReal);
+    if (p) todasFechas.push(p);
+    if (r) todasFechas.push(r);
+  });
+  todasFechas.push(hoy);
+
+  const minDate = new Date(Math.min(...todasFechas.map(d => d.getTime())));
+  const maxDate = new Date(Math.max(...todasFechas.map(d => d.getTime())));
+  // Padding de 30 días a cada lado
+  minDate.setDate(minDate.getDate() - 30);
+  maxDate.setDate(maxDate.getDate() + 30);
+
+  const totalDias = (maxDate - minDate) / (1000 * 60 * 60 * 24);
+  const PX_PER_DAY = 14;
+  const svgW = Math.max(600, totalDias * PX_PER_DAY + 80);
+  const Y_PREV = 35;   // fila prevista (rombos)
+  const Y_REAL = 80;   // fila real (rombos)
+  const R = 7;         // medio-lado del rombo
+
+  function dateToX(d) {
+    return 40 + ((d - minDate) / (1000 * 60 * 60 * 24)) * PX_PER_DAY;
+  }
+
+  let svgContent = '';
+
+  // Línea base prevista
+  svgContent += `<line x1="40" y1="${Y_PREV}" x2="${svgW - 40}" y2="${Y_PREV}" stroke="#e2e8f0" stroke-width="1.5"/>`;
+  // Línea base real
+  svgContent += `<line x1="40" y1="${Y_REAL}" x2="${svgW - 40}" y2="${Y_REAL}" stroke="#e2e8f0" stroke-width="1.5"/>`;
+
+  // Meses en eje X (sobre fila prevista)
+  const mesLabels = new Set();
+  let cur = new Date(minDate);
+  while (cur <= maxDate) {
+    const mesKey = `${cur.getFullYear()}-${cur.getMonth()}`;
+    if (!mesLabels.has(mesKey)) {
+      mesLabels.add(mesKey);
+      const x = dateToX(new Date(cur.getFullYear(), cur.getMonth(), 1));
+      const label = cur.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
+      svgContent += `<text x="${x}" y="14" font-family="DM Sans,sans-serif" font-size="9" fill="#94a3b8" text-anchor="middle">${label}</text>`;
+      svgContent += `<line x1="${x}" y1="17" x2="${x}" y2="${Y_PREV - 10}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,2"/>`;
+    }
+    cur.setDate(cur.getDate() + 7);
+  }
+
+  // Línea "Hoy"
+  const xHoy = dateToX(hoy);
+  svgContent += `<line x1="${xHoy}" y1="18" x2="${xHoy}" y2="100" stroke="#d97706" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  svgContent += `<text x="${xHoy}" y="108" font-family="DM Sans,sans-serif" font-size="8" fill="#d97706" text-anchor="middle">Hoy</text>`;
+
+  // Hitos
+  hitos.forEach(h => {
+    const xP = dateToX(_parseISOFromDDMM(h.fechaPrevista) || hoy);
+    const fechaReal = _parseISOFromDDMM(h.fechaReal) || _parseISOFromDDMM(h.fechaPrevista) || hoy;
+    const xR = dateToX(fechaReal);
+
+    // Conector prevista→real
+    if (Math.abs(xP - xR) > 2) {
+      svgContent += `<line x1="${xP}" y1="${Y_PREV}" x2="${xR}" y2="${Y_REAL}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2"/>`;
+    } else {
+      svgContent += `<line x1="${xP}" y1="${Y_PREV + R}" x2="${xP}" y2="${Y_REAL - R}" stroke="#cbd5e1" stroke-width="1"/>`;
+    }
+
+    // Rombo prevista — siempre gris
+    svgContent += `<polygon points="${xP},${Y_PREV - R} ${xP + R},${Y_PREV} ${xP},${Y_PREV + R} ${xP - R},${Y_PREV}" fill="#B4B2A9"/>`;
+
+    // Rombo real — coloreado por estado
+    let fillR = 'transparent', strokeR = '#B4B2A9', swR = 1.5;
+    const prevDate = _parseISOFromDDMM(h.fechaPrevista);
+    if (h.cumplido === 'SI') { fillR = '#0F6E56'; strokeR = '#0F6E56'; swR = 0; }
+    else if (prevDate && prevDate < hoy) { fillR = '#A32D2D'; strokeR = '#A32D2D'; swR = 0; }
+    else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime()) { fillR = '#185FA5'; strokeR = '#185FA5'; swR = 0; }
+    svgContent += `<polygon points="${xR},${Y_REAL - R} ${xR + R},${Y_REAL} ${xR},${Y_REAL + R} ${xR - R},${Y_REAL}" fill="${fillR}" stroke="${strokeR}" stroke-width="${swR}"/>`;
+
+    // Label nombre
+    svgContent += `<text x="${xP}" y="${Y_PREV - R - 3}" font-family="DM Sans,sans-serif" font-size="9" fill="#475569" text-anchor="middle">${h.nombre.length > 12 ? h.nombre.slice(0, 11) + '…' : h.nombre}</text>`;
+  });
+
+  svg.setAttribute('width', svgW);
+  svg.setAttribute('height', '115');
+  svg.innerHTML = svgContent;
+
+  // Inicializar panzoom — doble click reset
+  const inner = document.getElementById('hi-panzoom-inner');
+  const pz = panzoom(inner, {
+    maxZoom: 4, minZoom: 0.5,
+    bounds: false, boundsPadding: 0.1,
+    zoomDoubleClickSpeed: 1
+  });
+  inner.addEventListener('dblclick', () => pz.moveTo(0, 0) && pz.zoomTo(0, 0, 1));
+  estado._panzoomHitos = pz;
+}
+
+/* ── Tabla DataTable ── */
+function renderTablaHitos(hitos) {
+  if (estado.dtHitos) { estado.dtHitos.destroy(); estado.dtHitos = null; }
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+
+  // Identificar próximo
+  let nextDate = null;
+  hitos.filter(h => h.cumplido !== 'SI').forEach(h => {
+    const p = _parseISOFromDDMM(h.fechaPrevista);
+    if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
+  });
+
+  const esUsuario = estado.usuario?.perfil === 'usuario';
+
+  document.getElementById('tbody-hitos').innerHTML = hitos.map(h => {
+    const prevDate = _parseISOFromDDMM(h.fechaPrevista);
+    let clase = 'badge-hi-fut', label = 'Futuro';
+    if (h.cumplido === 'SI') { clase = 'badge-hi-done'; label = 'Cumplido'; }
+    else if (prevDate && prevDate < hoy) { clase = 'badge-hi-late'; label = 'Vencido'; }
+    else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime()) { clase = 'badge-hi-next'; label = 'Próximo'; }
+
+    const acciones = esUsuario
+      ? `<div style="display:flex;gap:6px">
+           <button class="btn-edit-row" onclick='abrirModalHito(${JSON.stringify(h)})'>Editar</button>
+           <button class="btn-del-row" onclick="confirmarBajaHito(${h._fila}, '${h.nombre.replace(/'/g,"\\'")}')">Baja</button>
+         </div>`
+      : '';
+
+    return `<tr>
+      <td>${h.orden}</td>
+      <td>${h.nombre}</td>
+      <td>${h.fechaPrevista || '—'}</td>
+      <td>${h.fechaReal || '—'}</td>
+      <td><span style="font-weight:600">${h.cumplido}</span></td>
+      <td><span class="badge ${clase}">${label}</span></td>
+      <td style="max-width:200px;white-space:normal;font-size:.8rem;color:var(--muted)">${h.observacion || ''}</td>
+      <td>${acciones}</td>
+    </tr>`;
+  }).join('');
+
+  estado.dtHitos = $('#tabla-hitos').DataTable({
+    language: _dtLang(),
+    pageLength: 20,
+    order: [[0, 'asc']],
+    columnDefs: [{ orderable: false, targets: 7 }]
+  });
+}
+
+/* ── Modal Hito ── */
+function abrirModalHito(hito) {
+  const nueva = !hito;
+  document.getElementById('modal-hito-titulo').textContent = nueva ? 'Nuevo hito' : 'Editar hito';
+  document.getElementById('hito-fila').value          = hito?._fila || '';
+  document.getElementById('hito-nombre').value        = hito?.nombre || '';
+  document.getElementById('hito-orden').value         = hito?.orden || '';
+  document.getElementById('hito-cumplido').value      = hito?.cumplido || 'NO';
+  document.getElementById('hito-fecha-prevista').value = hito ? _ddmmToISO(hito.fechaPrevista) : '';
+  document.getElementById('hito-fecha-real').value    = hito ? _ddmmToISO(hito.fechaReal) : '';
+  document.getElementById('hito-obs').value           = hito?.observacion || '';
+  abrirModal('modal-hito');
+}
+
+/* ── Guardar Hito ── */
+async function guardarHito() {
+  const nombre   = document.getElementById('hito-nombre').value.trim();
+  const orden    = document.getElementById('hito-orden').value.trim();
+  const cumplido = document.getElementById('hito-cumplido').value;
+  const prevISO  = document.getElementById('hito-fecha-prevista').value;
+  const realISO  = document.getElementById('hito-fecha-real').value;
+  const obs      = document.getElementById('hito-obs').value.trim();
+  const fila     = document.getElementById('hito-fila').value;
+
+  if (!nombre || !orden || !prevISO) { mostrarToast('⚠ Completá Nombre, Orden y Fecha prevista'); return; }
+
+  // Convertir YYYY-MM-DD → DD/MM/YYYY para GAS
+  function isoToDDMM(s) { if (!s) return ''; const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; }
+  const fechaPrevista = isoToDDMM(prevISO);
+  const fechaReal     = realISO ? isoToDDMM(realISO) : fechaPrevista;
+
+  spinner(true);
+  document.getElementById('btn-guardar-hito').disabled = true;
+  try {
+    const data = await gasPost({
+      action: 'guardarHito',
+      email: estado.usuario.email,
+      obra: obraActual(),
+      nombre, orden: Number(orden), cumplido,
+      fechaPrevista, fechaReal, observacion: obs,
+      _fila: fila ? Number(fila) : null
+    });
+    if (!data.ok) throw new Error(data.error);
+    cerrarModal('modal-hito');
+    mostrarToast('✓ ' + data.mensaje);
+    await cargarHitos();
+  } catch (e) { mostrarToast('⚠ Error: ' + e.message); }
+  finally { spinner(false); document.getElementById('btn-guardar-hito').disabled = false; }
+}
+
+/* ── Baja hito ── */
+async function confirmarBajaHito(fila, nombre) {
+  if (!confirm(`¿Dar de baja el hito "${nombre}"? Esta acción es irreversible.`)) return;
+  spinner(true);
+  try {
+    const data = await gasPost({
+      action: 'desactivarHito',
+      email: estado.usuario.email,
+      obra: obraActual(),
+      _fila: Number(fila)
+    });
+    if (!data.ok) throw new Error(data.error);
+    mostrarToast('✓ ' + data.mensaje);
+    await cargarHitos();
+  } catch (e) { mostrarToast('⚠ Error: ' + e.message); }
+  finally { spinner(false); }
+}
+
+/* ── PDF Hitos ── */
+async function exportarHitosPDF() {
+  if (!estado.hitosData.length) { mostrarToast('⚠ No hay hitos para exportar'); return; }
+  const obra = obraActual();
+  const obraDesc = estado.usuario?.perfil === 'administrador'
+    ? (document.getElementById('sel-obra-global')?.options[document.getElementById('sel-obra-global').selectedIndex]?.text || obra)
+    : (estado.usuario?.obra + ' — ' + estado.usuario?.obraDesc);
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+
+  // Identificar próximo
+  let nextDate = null;
+  estado.hitosData.filter(h => h.cumplido !== 'SI').forEach(h => {
+    const p = _parseISOFromDDMM(h.fechaPrevista);
+    if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
+  });
+
+  let total = estado.hitosData.length, done = 0, late = 0;
+  estado.hitosData.forEach(h => {
+    if (h.cumplido === 'SI') { done++; return; }
+    const prev = _parseISOFromDDMM(h.fechaPrevista);
+    if (prev && prev < hoy) late++;
+  });
+  const pend = total - done - late;
+
+  const ahora = new Date();
+  const ts = `${ahora.getFullYear()}${_p2(ahora.getMonth()+1)}${_p2(ahora.getDate())}_${_p2(ahora.getHours())}${_p2(ahora.getMinutes())}${_p2(ahora.getSeconds())}`;
+  const nombreArchivo = `${obra}_Hitos_${ts}.pdf`;
+
+  const container = document.getElementById('pdf-render-hitos');
+  container.innerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#0f172a;letter-spacing:2px;margin-bottom:4px">LibroObra · Hitos</div>
+      <div style="font-size:13px;color:#64748b">${obraDesc} — Generado: ${_fmtDDMM(ahora)} ${_p2(ahora.getHours())}:${_p2(ahora.getMinutes())}</div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      ${[
+        ['Total', total, '#0f172a'],
+        ['Cumplidos', done, '#0F6E56'],
+        ['Pendientes', pend < 0 ? 0 : pend, '#64748b'],
+        ['Vencidos', late, '#A32D2D'],
+      ].map(([l, v, c]) => `<div style="flex:1;min-width:120px;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;border-top:3px solid ${c}">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:4px">${l}</div>
+        <div style="font-size:24px;font-family:'Bebas Neue',sans-serif;color:${c}">${v}</div>
+      </div>`).join('')}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:#f1f5f9">
+          <th style="padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0">#</th>
+          <th style="padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0">Nombre</th>
+          <th style="padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0">Prevista</th>
+          <th style="padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0">Real</th>
+          <th style="padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0">Cumplido</th>
+          <th style="padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;border-bottom:2px solid #e2e8f0">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${estado.hitosData.map((h, i) => {
+          const prevDate = _parseISOFromDDMM(h.fechaPrevista);
+          let label = 'Futuro', color = '#64748b';
+          if (h.cumplido === 'SI') { label = 'Cumplido'; color = '#0F6E56'; }
+          else if (prevDate && prevDate < hoy) { label = 'Vencido'; color = '#A32D2D'; }
+          else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime()) { label = 'Próximo'; color = '#185FA5'; }
+          return `<tr style="background:${i%2===0?'#fff':'#f8fafc'}">
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">${h.orden}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b;font-weight:500">${h.nombre}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">${h.fechaPrevista || '—'}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#1e293b">${h.fechaReal || '—'}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:${h.cumplido==='SI'?'#0F6E56':'#1e293b'}">${h.cumplido}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:${color};font-weight:600">${label}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+
+  spinner(true);
+  try {
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const imgW = pageW - margin * 2;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let y = margin;
+    let heightLeft = imgH;
+    pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH);
+    heightLeft -= pageH - margin * 2;
+    while (heightLeft > 0) {
+      y = heightLeft - imgH + margin;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH);
+      heightLeft -= pageH - margin * 2;
+    }
+    pdf.save(nombreArchivo);
+    mostrarToast('✓ PDF generado');
+  } catch (e) { mostrarToast('⚠ Error al generar PDF: ' + e.message); }
+  finally { spinner(false); container.innerHTML = ''; }
 }
 
 /* ── ADMIN OBRAS ── */
