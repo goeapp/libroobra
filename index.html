@@ -2163,12 +2163,10 @@ async function guardarHito() {
   const obs      = document.getElementById('hito-obs').value.trim();
   const fila     = document.getElementById('hito-fila').value;
 
-  if (!nombre || !orden || !prevISO) { mostrarToast('⚠ Completá Nombre, Orden y Fecha prevista'); return; }
-
   // Fechas: input[type=date] devuelve YYYY-MM-DD — el GAS espera YYYY-MM-DD
   const fechaPrevista = document.getElementById('hito-fecha-prevista').value;
   const fechaReal     = document.getElementById('hito-fecha-real').value || fechaPrevista;
-  if (!fechaPrevista) { mostrarToast('⚠ Fecha prevista inválida'); return; }
+  if (!nombre || !orden || !fechaPrevista) { mostrarToast('⚠ Completá Nombre, Orden y Fecha prevista'); return; }
 
   spinner(true);
   document.getElementById('btn-guardar-hito').disabled = true;
