@@ -2159,10 +2159,17 @@ async function guardarHito() {
 
   if (!nombre || !orden || !prevISO) { mostrarToast('⚠ Completá Nombre, Orden y Fecha prevista'); return; }
 
-  // Convertir YYYY-MM-DD → DD/MM/YYYY para GAS
-  function isoToDDMM(s) { if (!s) return ''; const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; }
-  const fechaPrevista = isoToDDMM(prevISO);
-  const fechaReal     = realISO ? isoToDDMM(realISO) : fechaPrevista;
+  // Convertir input[type=date] → DD/MM/YYYY para GAS (robusto)
+  function inputFechaToDDMM(inputId) {
+    const v = document.getElementById(inputId).value; // siempre YYYY-MM-DD por spec HTML5
+    if (!v) return '';
+    const p = v.split('-');
+    return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : '';
+  }
+  const fechaPrevista = inputFechaToDDMM('hito-fecha-prevista');
+  const fechaReal     = document.getElementById('hito-fecha-real').value
+                        ? inputFechaToDDMM('hito-fecha-real') : fechaPrevista;
+  if (!fechaPrevista) { mostrarToast('⚠ Fecha prevista inválida'); return; }
 
   spinner(true);
   document.getElementById('btn-guardar-hito').disabled = true;
