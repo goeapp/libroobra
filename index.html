@@ -1929,7 +1929,7 @@ function _fmtDDMM(date) {
 function _clasificarHito(h, hoy) {
   // returns: 'done' | 'late' | 'next' | 'fut'
   if (h.cumplido === 'SI') return 'done';
-  const prev = _parseISO(h.fechaPrev);
+  const prev = _parseISOFromDDMM(h.fechaPrev);
   if (!prev) return 'fut';
   if (prev < hoy) return 'late';
   return 'fut'; // será sobreescrito por 'next' en renderKPIsHitos
@@ -1958,7 +1958,7 @@ function renderKPIsHitos(hitos) {
 
   hitos.forEach(h => {
     if (h.cumplido === 'SI') { done++; return; }
-    const prev = _parseISO(h.fechaPrev);
+    const prev = _parseISOFromDDMM(h.fechaPrev);
     if (prev && prev < hoy) { late++; return; }
     // pendiente futuro
     if (prev && (!nextDate || prev < nextDate)) { nextDate = prev; nextNombre = h.nombre; }
@@ -1992,15 +1992,15 @@ function renderTimelineHitos(hitos) {
   // Identificar próximo
   let nextDate = null;
   hitos.filter(h => h.cumplido !== 'SI').forEach(h => {
-    const p = _parseISO(h.fechaPrev);
+    const p = _parseISOFromDDMM(h.fechaPrev);
     if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
   });
 
   // Rango de fechas (todas las previstas + reales)
   const todasFechas = [];
   hitos.forEach(h => {
-    const p = _parseISO(h.fechaPrev);
-    const r = _parseISO(h.fechaReal);
+    const p = _parseISOFromDDMM(h.fechaPrev);
+    const r = _parseISOFromDDMM(h.fechaReal);
     if (p) todasFechas.push(p);
     if (r) todasFechas.push(r);
   });
@@ -2052,8 +2052,8 @@ function renderTimelineHitos(hitos) {
 
   // Hitos
   hitos.forEach(h => {
-    const xP = dateToX(_parseISO(h.fechaPrev) || hoy);
-    const fechaReal = _parseISO(h.fechaReal) || _parseISO(h.fechaPrev) || hoy;
+    const xP = dateToX(_parseISOFromDDMM(h.fechaPrev) || hoy);
+    const fechaReal = _parseISOFromDDMM(h.fechaReal) || _parseISOFromDDMM(h.fechaPrev) || hoy;
     const xR = dateToX(fechaReal);
 
     // Conector prevista→real
@@ -2068,7 +2068,7 @@ function renderTimelineHitos(hitos) {
 
     // Rombo real — coloreado por estado
     let fillR = 'transparent', strokeR = '#B4B2A9', swR = 1.5;
-    const prevDate = _parseISO(h.fechaPrev);
+    const prevDate = _parseISOFromDDMM(h.fechaPrev);
     if (h.cumplido === 'SI') { fillR = '#0F6E56'; strokeR = '#0F6E56'; swR = 0; }
     else if (prevDate && prevDate < hoy) { fillR = '#A32D2D'; strokeR = '#A32D2D'; swR = 0; }
     else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime()) { fillR = '#185FA5'; strokeR = '#185FA5'; swR = 0; }
@@ -2101,14 +2101,14 @@ function renderTablaHitos(hitos) {
   // Identificar próximo
   let nextDate = null;
   hitos.filter(h => h.cumplido !== 'SI').forEach(h => {
-    const p = _parseISO(h.fechaPrev);
+    const p = _parseISOFromDDMM(h.fechaPrev);
     if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
   });
 
   const esUsuario = estado.usuario?.perfil === 'usuario';
 
   document.getElementById('tbody-hitos').innerHTML = hitos.map(h => {
-    const prevDate = _parseISO(h.fechaPrev);
+    const prevDate = _parseISOFromDDMM(h.fechaPrev);
     let clase = 'badge-hi-fut', label = 'Futuro';
     if (h.cumplido === 'SI') { clase = 'badge-hi-done'; label = 'Cumplido'; }
     else if (prevDate && prevDate < hoy) { clase = 'badge-hi-late'; label = 'Vencido'; }
@@ -2125,7 +2125,7 @@ function renderTablaHitos(hitos) {
       <td>${h.orden}</td>
       <td>${h.nombre}</td>
       <td>${h.fechaPrev || '—'}</td>
-      <td>${h.fechaReal ? _fmtDDMM(_parseISO(h.fechaReal)) : '—'}</td>
+      <td>${h.fechaReal ? _fmtDDMM(_parseISOFromDDMM(h.fechaReal)) : '—'}</td>
       <td><span style="font-weight:600">${h.cumplido}</span></td>
       <td><span class="badge ${clase}">${label}</span></td>
       <td style="max-width:200px;white-space:normal;font-size:.8rem;color:var(--muted)">${h.observacion || ''}</td>
@@ -2149,8 +2149,8 @@ function abrirModalHito(hito) {
   document.getElementById('hito-nombre').value        = hito?.nombre || '';
   document.getElementById('hito-orden').value         = hito?.orden || '';
   document.getElementById('hito-cumplido').value      = hito?.cumplido || 'NO';
-  document.getElementById('hito-fecha-prevista').value = hito?.fechaPrev || '';
-  document.getElementById('hito-fecha-real').value    = hito?.fechaReal || '';
+  document.getElementById('hito-fecha-prevista').value = hito?.fechaPrev ? _ddmmToISO(hito.fechaPrev) : '';
+  document.getElementById('hito-fecha-real').value    = hito?.fechaReal ? _ddmmToISO(hito.fechaReal) : '';
   document.getElementById('hito-obs').value           = hito?.observacion || '';
   abrirModal('modal-hito');
 }
@@ -2217,14 +2217,14 @@ async function exportarHitosPDF() {
   // Identificar próximo
   let nextDate = null;
   estado.hitosData.filter(h => h.cumplido !== 'SI').forEach(h => {
-    const p = _parseISO(h.fechaPrev);
+    const p = _parseISOFromDDMM(h.fechaPrev);
     if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
   });
 
   let total = estado.hitosData.length, done = 0, late = 0;
   estado.hitosData.forEach(h => {
     if (h.cumplido === 'SI') { done++; return; }
-    const prev = _parseISO(h.fechaPrev);
+    const prev = _parseISOFromDDMM(h.fechaPrev);
     if (prev && prev < hoy) late++;
   });
   const pend = total - done - late;
@@ -2263,7 +2263,7 @@ async function exportarHitosPDF() {
       </thead>
       <tbody>
         ${estado.hitosData.map((h, i) => {
-          const prevDate = _parseISO(h.fechaPrev);
+          const prevDate = _parseISOFromDDMM(h.fechaPrev);
           let label = 'Futuro', color = '#64748b';
           if (h.cumplido === 'SI') { label = 'Cumplido'; color = '#0F6E56'; }
           else if (prevDate && prevDate < hoy) { label = 'Vencido'; color = '#A32D2D'; }
