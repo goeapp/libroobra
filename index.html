@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_2.html — LibroObra V4.2.0 -->
+<!-- index_libroobra_v4_3.html — LibroObra V4.3.0 -->
 <!-- Cambios v4.2:
   a) Heatmap anual de actividad en Dashboard (adaptado de ClimaObra)
   b) Mini-modal de línea de tiempo para historial de ediciones
@@ -13,7 +13,7 @@
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.2.0</title>
+<title>LibroObra V4.3.0</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -494,18 +494,18 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .hm-todos-1 { background:#9ca3af; }
 .hm-todos-2 { background:#374151; }
 .hm-todos-3 { background:#111827; }
-/* OS — azul */
-.hm-os-1    { background:#60a5fa; }
-.hm-os-2    { background:#2563eb; }
-.hm-os-3    { background:#1e3a8a; }
-/* NP — ámbar */
-.hm-np-1    { background:#fbbf24; }
-.hm-np-2    { background:#d97706; }
-.hm-np-3    { background:#92400e; }
-/* RM — verde */
-.hm-rm-1    { background:#4ade80; }
-.hm-rm-2    { background:#16a34a; }
-.hm-rm-3    { background:#14532d; }
+/* OS — ámbar (igual que gráfico: #d97706) */
+.hm-os-1    { background:#fcd34d; }
+.hm-os-2    { background:#d97706; }
+.hm-os-3    { background:#92400e; }
+/* NP — cyan (igual que gráfico: #0891b2) */
+.hm-np-1    { background:#67e8f9; }
+.hm-np-2    { background:#0891b2; }
+.hm-np-3    { background:#164e63; }
+/* RM — gris azulado (igual que gráfico: #94a3b8) */
+.hm-rm-1    { background:#cbd5e1; }
+.hm-rm-2    { background:#64748b; }
+.hm-rm-3    { background:#1e293b; }
 .hm-os { background:#d97706; }
 .hm-np { background:#0891b2; }
 .hm-rm { background:#475569; }
@@ -565,7 +565,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.2.0 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.3.0 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -603,7 +603,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.2.0</span>
+    <span class="hdr-version">V4.3.0</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -914,7 +914,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.2.0';
+const VERSION   = 'V4.3.0';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
