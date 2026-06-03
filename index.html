@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_5_10.html — LibroObra V4.5.10 -->
+<!-- index_libroobra_v4_5_11.html — LibroObra V4.5.11 -->
 <!-- Cambios v4.5.3:
   a) Fix modal-hito: no cierra al clickear fuera del overlay (data-no-outside-close)
 -->
@@ -12,7 +12,7 @@
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.5.10</title>
+<title>LibroObra V4.5.11</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -636,7 +636,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.5.10 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.5.11 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -675,7 +675,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.5.10</span>
+    <span class="hdr-version">V4.5.11</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -1139,7 +1139,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.5.10';
+const VERSION   = 'V4.5.11';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -1797,14 +1797,19 @@ function exportarExcel() {
   const rows = estado.rowsCom;
   if (!rows || !rows.length) { mostrarToast('⚠ No hay datos para exportar'); return; }
 
-  // Obtener IDs de filas visibles en DataTable (respeta buscador + filtro tipo)
-  const idsVisibles = new Set(
-    estado.dtCom.rows({ search: 'applied' }).data().toArray().map(r => r[0])
-  );
-  if (!idsVisibles.size) { mostrarToast('⚠ No hay datos con el filtro activo'); return; }
+  // Filtro tipo (OS/NP/RM/todos) — col 2
+  const filtro = estado.filtroCom || 'todos';
+  let filtradas = filtro === 'todos' ? rows : rows.filter(r => r[2] === filtro);
 
-  // Filtrar rowsCom crudos por IDs visibles — datos limpios, sin HTML
-  const filtradas = rows.filter(r => idsVisibles.has(r[0]));
+  // Filtro texto buscador DataTable — buscar en campos visibles (doc, num, fecha, asunto, etiq, estado)
+  const busq = estado.dtCom ? estado.dtCom.search().trim().toLowerCase() : '';
+  if (busq) {
+    filtradas = filtradas.filter(r => {
+      const haystack = [r[2],r[3],r[4],r[5],r[6],r[7],r[12]].join(' ').toLowerCase();
+      return haystack.includes(busq);
+    });
+  }
+
   if (!filtradas.length) { mostrarToast('⚠ No hay datos con el filtro activo'); return; }
 
   const headers = ['Doc','N°','Fecha','Asunto','Resumen','Etiquetas','Estado','Doc Ref','Observación','Usuario'];
@@ -1821,7 +1826,6 @@ function exportarExcel() {
     r[14]   // Usuario
   ]);
 
-  // Nombre archivo: {obra}_Comunicaciones_{timestamp}.xlsx
   const ahora = new Date();
   const ts = `${ahora.getFullYear()}${_p2(ahora.getMonth()+1)}${_p2(ahora.getDate())}_${_p2(ahora.getHours())}${_p2(ahora.getMinutes())}${_p2(ahora.getSeconds())}`;
   const nombreArchivo = `${obraActual()}_Comunicaciones_${ts}.xlsx`;
@@ -2051,165 +2055,168 @@ function renderTimelineHitos(hitos) {
     svg.setAttribute('width', '600');
     svg.setAttribute('height', '130');
     svg.innerHTML = '<text x="10" y="65" font-family="DM Sans,sans-serif" font-size="13" fill="#94a3b8">Sin hitos para mostrar</text>';
-    // Sincronizar altura labels
     _ajustarLabelsTimeline(130);
     return;
   }
 
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
 
-  // Identificar próximo hito pendiente
+  // Próximo hito pendiente
   let nextDate = null;
   hitos.filter(h => h.cumplido !== 'SI').forEach(h => {
     const p = _parseISOFromDDMM(h.fechaPrev);
     if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
   });
 
-  // ── Recopilar todas las fechas únicas (prev + real) → columnas ──
-  const fechaSet = new Map(); // "DD/MM/YYYY" → Date
+  // ── PASO 1: fechas únicas ordenadas (prev + real) ──
+  // Usar timestamp como clave para evitar duplicados por formato
+  const fechaMap = new Map(); // timestamp → "DD/MM/YYYY"
   hitos.forEach(h => {
-    if (h.fechaPrev) { const d = _parseISOFromDDMM(h.fechaPrev); if (d) fechaSet.set(h.fechaPrev, d); }
-    if (h.fechaReal) { const d = _parseISOFromDDMM(h.fechaReal); if (d) fechaSet.set(h.fechaReal, d); }
+    if (h.fechaPrev) { const d = _parseISOFromDDMM(h.fechaPrev); if (d) fechaMap.set(d.getTime(), h.fechaPrev); }
+    if (h.fechaReal) { const d = _parseISOFromDDMM(h.fechaReal); if (d) fechaMap.set(d.getTime(), h.fechaReal); }
   });
-  const columnas = [...fechaSet.entries()].sort((a, b) => a[1] - b[1]); // [[key, Date], ...]
-  const colIdx   = new Map(columnas.map(([key], i) => [key, i]));
+  // Ordenar por timestamp
+  const fechasOrdenadas = [...fechaMap.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([ts, str]) => ({ ts, str, d: new Date(ts) }));
+
+  // Map timestamp → índice de columna
+  const tsToCol = new Map(fechasOrdenadas.map((f, i) => [f.ts, i]));
 
   // ── Dimensiones ──
-  const SLOT_W    = 120;
-  const PAD_L     = 8;     // sin labels — están fuera del SVG
-  const PAD_R     = 24;
-  const PAD_TOP   = 30;    // espacio etiqueta mes + fecha
-  const R         = 12;    // radio del círculo
-  const STACK_GAP = 30;    // offset vertical apilado en fila Prev
+  const SLOT_W  = 120;
+  const PAD_L   = 8;
+  const PAD_R   = 24;
+  const R       = 12;
+  const STACK_GAP = 30;
+  const PAD_TOP = 30;
   const Y_PREV_BASE = PAD_TOP + 18;
   const Y_REAL_BASE = Y_PREV_BASE + 58;
 
-  // Máximo hitos apilados en una columna-prev → altura SVG
-  const stackPrevMap = new Map();
-  hitos.forEach(h => {
-    const k = h.fechaPrev || '—';
-    stackPrevMap.set(k, (stackPrevMap.get(k) || 0) + 1);
-  });
-  const maxStack = Math.max(...stackPrevMap.values(), 1);
-  const SVG_H    = Y_REAL_BASE + (maxStack - 1) * STACK_GAP + R + 22;
-
-  const nCols = columnas.length;
-  const svgW  = PAD_L + nCols * SLOT_W + PAD_R;
-
-  function colToX(key) {
-    const i = colIdx.has(key) ? colIdx.get(key) : 0;
+  function xDefecha(fechaStr) {
+    if (!fechaStr) return PAD_L + SLOT_W / 2;
+    const d = _parseISOFromDDMM(fechaStr);
+    if (!d) return PAD_L + SLOT_W / 2;
+    const i = tsToCol.has(d.getTime()) ? tsToCol.get(d.getTime()) : 0;
     return PAD_L + i * SLOT_W + SLOT_W / 2;
   }
 
-  let s = '';
-
-  // ── Líneas base coloreadas — grosor 3px ──
-  const x0 = PAD_L - 4;
-  const x1 = svgW - PAD_R + 4;
-  s += `<line x1="${x0}" y1="${Y_PREV_BASE}" x2="${x1}" y2="${Y_PREV_BASE}" stroke="#B4B2A9" stroke-width="3" stroke-linecap="round"/>`;
-  s += `<line x1="${x0}" y1="${Y_REAL_BASE}" x2="${x1}" y2="${Y_REAL_BASE}" stroke="#534AB7" stroke-width="3" stroke-linecap="round"/>`;
-
-  // ── Etiquetas columna: mes arriba + DD/MM ──
-  columnas.forEach(([key, d], i) => {
-    const xC    = PAD_L + i * SLOT_W + SLOT_W / 2;
-    const mes   = d.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
-    const dia   = _fmtDDMM(d).slice(0, 5);
-    s += `<text x="${xC}" y="11" font-family="DM Sans,sans-serif" font-size="8" fill="#94a3b8" text-anchor="middle">${mes}</text>`;
-    s += `<text x="${xC}" y="23" font-family="DM Sans,sans-serif" font-size="9" font-weight="600" fill="#64748b" text-anchor="middle">${dia}</text>`;
-    s += `<line x1="${xC}" y1="26" x2="${xC}" y2="${Y_PREV_BASE - R - 2}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,2"/>`;
-  });
-
-  // ── Línea Hoy — celeste, condicional al rango ──
-  const fechaDates = columnas.map(([,d]) => d);
-  if (fechaDates.length >= 1) {
-    const primera = new Date(Math.min(...fechaDates.map(d => d.getTime())));
-    const ultima  = new Date(Math.max(...fechaDates.map(d => d.getTime())));
-    if (hoy >= primera && hoy <= ultima) {
-      const frac = ultima > primera ? (hoy - primera) / (ultima - primera) : 0;
-      const xH   = PAD_L + frac * (nCols - 1) * SLOT_W + SLOT_W / 2;
-      s += `<line x1="${xH}" y1="4" x2="${xH}" y2="${SVG_H - 4}" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="4,3"/>`;
-      s += `<text x="${xH + 4}" y="13" font-family="DM Sans,sans-serif" font-size="8" fill="#0ea5e9">Hoy</text>`;
-    }
-  }
-
-  // ── Ordenar hitos por fecha prevista + orden para apilado consistente ──
+  // ── PASO 2: ordenar hitos y calcular posiciones apiladas ──
   const hitosOrd = [...hitos].sort((a, b) => {
     const pa = _parseISOFromDDMM(a.fechaPrev) || new Date(0);
     const pb = _parseISOFromDDMM(b.fechaPrev) || new Date(0);
     return pa - pb || a.orden - b.orden;
   });
 
-  // ── Pre-calcular posiciones X/Y de cada hito (Prev y Real) ──
-  const stackPrevIdx = new Map(); // kP → contador
-  const stackRealIdx = new Map(); // kR → contador
-  const posiciones   = hitosOrd.map(h => {
-    const kP  = h.fechaPrev || '—';
-    const kR  = h.fechaReal || kP;
-    const xP  = colToX(kP);
-    const xR  = colToX(kR);
-    const siP = stackPrevIdx.get(kP) || 0; stackPrevIdx.set(kP, siP + 1);
-    const siR = stackRealIdx.get(kR) || 0; stackRealIdx.set(kR, siR + 1);
-    const yP  = Y_PREV_BASE + siP * STACK_GAP;
-    const yR  = Y_REAL_BASE + siR * STACK_GAP;
-    return { h, kP, kR, xP, xR, yP, yR, siP };
+  // Contar apilado Prev y Real por timestamp de fecha
+  const cntPrev = new Map(); // ts → contador
+  const cntReal = new Map();
+
+  const posiciones = hitosOrd.map(h => {
+    const dP  = _parseISOFromDDMM(h.fechaPrev);
+    const dR  = _parseISOFromDDMM(h.fechaReal || h.fechaPrev);
+    const tsP = dP ? dP.getTime() : 0;
+    const tsR = dR ? dR.getTime() : tsP;
+
+    const siP = cntPrev.get(tsP) || 0; cntPrev.set(tsP, siP + 1);
+    const siR = cntReal.get(tsR) || 0; cntReal.set(tsR, siR + 1);
+
+    return {
+      h,
+      xP: xDefecha(h.fechaPrev),
+      xR: xDefecha(h.fechaReal || h.fechaPrev),
+      yP: Y_PREV_BASE + siP * STACK_GAP,
+      yR: Y_REAL_BASE + siR * STACK_GAP,
+      siP
+    };
   });
 
-  // ── Dibujar conectores primero (debajo de círculos) ──
+  // ── PASO 3: dimensiones ──
+  const nCols      = fechasOrdenadas.length;
+  const svgW       = PAD_L + nCols * SLOT_W + PAD_R;
+  const maxP       = Math.max(...[...cntPrev.values()], 1);
+  const maxR       = Math.max(...[...cntReal.values()], 1);
+  const SVG_H      = Math.max(
+    Y_PREV_BASE + (maxP - 1) * STACK_GAP + R + 10,
+    Y_REAL_BASE + (maxR - 1) * STACK_GAP + R + 22
+  );
+
+  let s = '';
+
+  // ── Líneas base coloreadas ──
+  s += `<line x1="${PAD_L-4}" y1="${Y_PREV_BASE}" x2="${svgW-PAD_R+4}" y2="${Y_PREV_BASE}" stroke="#B4B2A9" stroke-width="3" stroke-linecap="round"/>`;
+  s += `<line x1="${PAD_L-4}" y1="${Y_REAL_BASE}" x2="${svgW-PAD_R+4}" y2="${Y_REAL_BASE}" stroke="#534AB7" stroke-width="3" stroke-linecap="round"/>`;
+
+  // ── Etiquetas columna ──
+  fechasOrdenadas.forEach((f, i) => {
+    const xC  = PAD_L + i * SLOT_W + SLOT_W / 2;
+    const mes = f.d.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
+    const dia = _fmtDDMM(f.d).slice(0, 5);
+    s += `<text x="${xC}" y="11" font-family="DM Sans,sans-serif" font-size="8" fill="#94a3b8" text-anchor="middle">${mes}</text>`;
+    s += `<text x="${xC}" y="23" font-family="DM Sans,sans-serif" font-size="9" font-weight="600" fill="#64748b" text-anchor="middle">${dia}</text>`;
+    s += `<line x1="${xC}" y1="26" x2="${xC}" y2="${Y_PREV_BASE-R-2}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,2"/>`;
+  });
+
+  // ── Línea Hoy celeste — condicional al rango ──
+  if (fechasOrdenadas.length >= 2) {
+    const primera = fechasOrdenadas[0].d;
+    const ultima  = fechasOrdenadas[fechasOrdenadas.length - 1].d;
+    if (hoy >= primera && hoy <= ultima) {
+      const frac = (hoy - primera) / (ultima - primera);
+      const xH   = PAD_L + frac * (nCols - 1) * SLOT_W + SLOT_W / 2;
+      s += `<line x1="${xH}" y1="4" x2="${xH}" y2="${SVG_H-4}" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+      s += `<text x="${xH+4}" y="13" font-family="DM Sans,sans-serif" font-size="8" fill="#0ea5e9">Hoy</text>`;
+    }
+  }
+
+  // ── Conectores (debajo de círculos) ──
   posiciones.forEach(({ xP, xR, yP, yR }) => {
     if (Math.abs(xP - xR) > 4) {
-      s += `<line x1="${xP}" y1="${yP + R}" x2="${xR}" y2="${yR - R}" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="3,2"/>`;
+      s += `<line x1="${xP}" y1="${yP+R}" x2="${xR}" y2="${yR-R}" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="3,2"/>`;
     } else {
-      s += `<line x1="${xP}" y1="${yP + R}" x2="${xP}" y2="${yR - R}" stroke="#cbd5e1" stroke-width="1.2"/>`;
+      s += `<line x1="${xP}" y1="${yP+R}" x2="${xP}" y2="${yR-R}" stroke="#cbd5e1" stroke-width="1.2"/>`;
     }
   });
 
-  // ── Dibujar círculos ──
+  // ── Círculos ──
   posiciones.forEach(({ h, xP, xR, yP, yR, siP }) => {
     const prevDate     = _parseISOFromDDMM(h.fechaPrev);
     const fechaPrevFmt = h.fechaPrev || '—';
     const fechaRealFmt = h.fechaReal ? _fmtDDMM(_parseISOFromDDMM(h.fechaReal)) : '—';
-    const nombreEsc    = h.nombre.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const nombreEsc    = h.nombre.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const num          = String(h.orden);
     const fontSize     = num.length > 2 ? 8 : (num.length > 1 ? 9 : 11);
 
-    // Color círculo real
+    // Color real
     let fillR = '#B4B2A9';
     if (h.cumplido === 'SI') {
       const dR = _parseISOFromDDMM(h.fechaReal);
       fillR = (dR && prevDate && dR.getTime() === prevDate.getTime()) ? '#22c55e' : '#0F6E56';
-    } else if (prevDate && prevDate < hoy)                                          { fillR = '#A32D2D'; }
-    else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime())     { fillR = '#185FA5'; }
+    } else if (prevDate && prevDate < hoy)                                        { fillR = '#A32D2D'; }
+    else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime())   { fillR = '#185FA5'; }
 
-    // Nombre truncado encima del primer hito de la columna Prev
+    // Nombre encima del primer hito de la columna
     if (siP === 0) {
-      const nm = h.nombre.length > 9 ? h.nombre.slice(0, 8) + '…' : h.nombre;
-      s += `<text x="${xP}" y="${yP - R - 4}" font-family="DM Sans,sans-serif" font-size="8" fill="#64748b" text-anchor="middle">${nm}</text>`;
+      const nm = h.nombre.length > 9 ? h.nombre.slice(0,8)+'…' : h.nombre;
+      s += `<text x="${xP}" y="${yP-R-4}" font-family="DM Sans,sans-serif" font-size="8" fill="#64748b" text-anchor="middle">${nm}</text>`;
     }
 
-    // Círculo prevista — siempre gris
-    s += `<circle cx="${xP}" cy="${yP}" r="${R}" fill="#B4B2A9"
-      class="hi-tl-node" data-nombre="${nombreEsc}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
-    s += `<text x="${xP}" y="${yP + fontSize/3}" font-family="DM Sans,sans-serif" font-size="${fontSize}" font-weight="600" fill="#fff" text-anchor="middle" pointer-events="none">${num}</text>`;
+    // Círculo Prev
+    s += `<circle cx="${xP}" cy="${yP}" r="${R}" fill="#B4B2A9" class="hi-tl-node" data-nombre="${nombreEsc}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
+    s += `<text x="${xP}" y="${yP+fontSize/3}" font-family="DM Sans,sans-serif" font-size="${fontSize}" font-weight="600" fill="#fff" text-anchor="middle" pointer-events="none">${num}</text>`;
 
-    // Círculo real — coloreado
+    // Círculo Real
     const textFillR = fillR === '#B4B2A9' ? '#475569' : '#fff';
-    s += `<circle cx="${xR}" cy="${yR}" r="${R}" fill="${fillR}"
-      class="hi-tl-node" data-nombre="${nombreEsc}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
-    s += `<text x="${xR}" y="${yR + fontSize/3}" font-family="DM Sans,sans-serif" font-size="${fontSize}" font-weight="600" fill="${textFillR}" text-anchor="middle" pointer-events="none">${num}</text>`;
+    s += `<circle cx="${xR}" cy="${yR}" r="${R}" fill="${fillR}" class="hi-tl-node" data-nombre="${nombreEsc}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
+    s += `<text x="${xR}" y="${yR+fontSize/3}" font-family="DM Sans,sans-serif" font-size="${fontSize}" font-weight="600" fill="${textFillR}" text-anchor="middle" pointer-events="none">${num}</text>`;
   });
 
-  // Altura final considerando apilado real también
-  const maxStackReal = Math.max(...[...stackRealIdx.values()], 1);
-  const SVG_H_FINAL  = Math.max(SVG_H, Y_REAL_BASE + (maxStackReal - 1) * STACK_GAP + R + 22);
-
   svg.setAttribute('width', svgW);
-  svg.setAttribute('height', SVG_H_FINAL);
+  svg.setAttribute('height', SVG_H);
   svg.innerHTML = s;
+  _ajustarLabelsTimeline(SVG_H);
 
-  // Sincronizar altura del panel labels con el SVG
-  _ajustarLabelsTimeline(SVG_H_FINAL);
-
-  // ── Tooltip hover ──
+  // Tooltip
   const tooltip = document.getElementById('hi-tl-tooltip');
   svg.querySelectorAll('.hi-tl-node').forEach(el => {
     el.style.cursor = 'default';
@@ -2218,8 +2225,8 @@ function renderTimelineHitos(hitos) {
       tooltip.style.opacity = '1';
     });
     el.addEventListener('mousemove', e => {
-      tooltip.style.left = (e.clientX + 14) + 'px';
-      tooltip.style.top  = (e.clientY - 38) + 'px';
+      tooltip.style.left = (e.clientX+14)+'px';
+      tooltip.style.top  = (e.clientY-38)+'px';
     });
     el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
   });
