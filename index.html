@@ -1,7 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_5_13.html — LibroObra V4.5.13 -->
+<!-- index_libroobra_v5_0_0.html — LibroObra V5.0.0 -->
+<!-- Cambios v5.0.0:
+  a) Favicon SVG inline
+  b) Dashboard: stat-card "Documentos en Aviso" (5ª tarjeta)
+  c) Dashboard: panel "Últimos registros" con tab "Avisos"
+  d) Hitos — columna CUMPLIDO: badges Sí (azul) / No (gris)
+  e) Hitos — baja: modal de confirmación reemplaza confirm() nativo
+-->
 <!-- Cambios v4.5.3:
   a) Fix modal-hito: no cierra al clickear fuera del overlay (data-no-outside-close)
 -->
@@ -12,7 +19,8 @@
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.5.13</title>
+<title>LibroObra V5.0.0</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f172a'/%3E%3Ccircle cx='9' cy='16' r='3.5' fill='%23d97706'/%3E%3Ctext x='14' y='21' font-family='Arial Black,sans-serif' font-size='13' font-weight='900' fill='%23d97706'%3ELO%3C/text%3E%3C/svg%3E">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -626,6 +634,20 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 
 .btn-del-row { background:none; border:1px solid #fecaca; color:#991b1b; font-size:.75rem; padding:3px 10px; border-radius:var(--radius-sm); transition:all .15s; font-family:inherit; cursor:pointer; }
 .btn-del-row:hover { background:#fee2e2; }
+
+/* ══════════════════════════════════════════════
+   v5.0.0 — NUEVOS ESTILOS
+══════════════════════════════════════════════ */
+.stat-card.aviso { border-left-color: var(--warning); }
+.stat-card.aviso .stat-value { color: #92400e; }
+.badge-cum-si { background:#dbeafe; color:#1e40af; border-radius:99px; padding:2px 9px; font-size:.72rem; font-weight:600; display:inline-block; }
+.badge-cum-no { background:#f1f5f9; color:#64748b; border-radius:99px; padding:2px 9px; font-size:.72rem; font-weight:600; display:inline-block; }
+.ul-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:10px; }
+.ul-tab-btn { background:none; border:none; font-family:inherit; font-size:.72rem; font-weight:600; color:var(--muted); padding:6px 14px; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; cursor:pointer; }
+.ul-tab-btn:hover { color:var(--accent2); }
+.ul-tab-btn.active { color:var(--accent2); border-bottom-color:var(--accent); }
+.ul-tab-panel { display:none; }
+.ul-tab-panel.active { display:block; }
 </style>
 </head>
 <body>
@@ -635,7 +657,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.5.13 · Registro de comunicaciones</div>
+    <div class="login-sub">V5.0.0 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -674,7 +696,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.5.13</span>
+    <span class="hdr-version">V5.0.0</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -689,7 +711,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <button class="btn btn-secondary btn-sm" onclick="cargarDashboard()">↻ Actualizar</button>
         </div>
       </div>
-      <div class="cards-row">
+      <div class="cards-row" style="grid-template-columns:repeat(5,1fr)">
         <div class="stat-card os">
           <div class="stat-label">Órdenes de Servicio</div>
           <div class="stat-value" id="dash-os">—</div>
@@ -704,6 +726,11 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <div class="stat-label">Reuniones / Minutas</div>
           <div class="stat-value" id="dash-rm">—</div>
           <div class="stat-sub"  id="dash-rm-sub"></div>
+        </div>
+        <div class="stat-card aviso">
+          <div class="stat-label">Docs en Aviso</div>
+          <div class="stat-value" id="dash-aviso">—</div>
+          <div class="stat-sub"  id="dash-aviso-sub"></div>
         </div>
         <div class="stat-card" style="border-left-color:#185FA5">
           <div class="stat-label">Próximo Hito</div>
@@ -729,13 +756,26 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           <div style="position:relative;height:180px"><canvas id="chart-trim"></canvas></div>
         </div>
         <div class="card">
-          <div class="card-title">Últimos registros</div>
-          <table class="ultimos-table">
-            <thead><tr><th>Doc</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Estado</th></tr></thead>
-            <tbody id="tbody-ultimos">
-              <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Cargando…</td></tr>
-            </tbody>
-          </table>
+          <div class="ul-tabs">
+            <button class="ul-tab-btn active" id="ul-tab-ultimos" onclick="showUlTab('ultimos')">Últimos registros</button>
+            <button class="ul-tab-btn"        id="ul-tab-avisos"  onclick="showUlTab('avisos')">Avisos <span id="ul-avisos-badge" style="display:none;background:var(--warning);color:#fff;border-radius:99px;padding:0 6px;font-size:.65rem;margin-left:4px"></span></button>
+          </div>
+          <div class="ul-tab-panel active" id="ul-panel-ultimos">
+            <table class="ultimos-table">
+              <thead><tr><th>Doc</th><th>N°</th><th>Fecha</th><th>Asunto</th><th>Estado</th></tr></thead>
+              <tbody id="tbody-ultimos">
+                <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Cargando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="ul-tab-panel" id="ul-panel-avisos">
+            <table class="ultimos-table">
+              <thead><tr><th>Doc</th><th>N°</th><th>Fecha</th><th>Asunto</th></tr></thead>
+              <tbody id="tbody-avisos">
+                <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">Sin avisos</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
@@ -1105,6 +1145,24 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 <!-- DIV PDF HITOS (fuera de pantalla) -->
 <div id="pdf-render-hitos" style="position:fixed;left:-9999px;top:0;width:750px;background:#fff;z-index:-1;font-family:'DM Sans',sans-serif;padding:32px"></div>
 
+<!-- MODAL CONFIRMAR BAJA HITO (v5.0.0) -->
+<div class="modal-overlay" id="modal-confirm-baja" data-no-outside-close>
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title">Dar de baja hito</span>
+      <button class="modal-close" onclick="cerrarModal('modal-confirm-baja')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.88rem;color:var(--text);line-height:1.6" id="modal-baja-msg">¿Dar de baja este hito?</p>
+      <p style="font-size:.78rem;color:var(--muted);margin-top:8px">Esta acción es irreversible.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-confirm-baja')">Cancelar</button>
+      <button class="btn btn-danger"    id="btn-confirm-baja-ok" onclick="ejecutarBajaHito()">Confirmar baja</button>
+    </div>
+  </div>
+</div>
+
 <div id="spinner"><div class="spinner-ring"></div></div>
 <div id="toast"></div>
 <div id="hm-tooltip"></div>
@@ -1138,7 +1196,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.5.13';
+const VERSION   = 'V5.0.0';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -1309,10 +1367,13 @@ async function cargarDashboard() {
     document.getElementById('dash-os').textContent     = data.totalOS;
     document.getElementById('dash-np').textContent     = data.totalNP;
     document.getElementById('dash-rm').textContent     = data.totalRM;
+    document.getElementById('dash-aviso').textContent  = data.totalAviso || 0;
+    document.getElementById('dash-aviso-sub').textContent = (data.totalAviso || 0) === 0 ? 'Sin avisos activos' : 'registros en aviso';
     document.getElementById('dash-os-sub').textContent = data.ultimos30.OS + ' en últimos 30 días';
     document.getElementById('dash-np-sub').textContent = data.ultimos30.NP + ' en últimos 30 días';
     document.getElementById('dash-rm-sub').textContent = data.ultimos30.RM + ' en últimos 30 días';
     renderUltimos5(data.ultimos5);
+    renderAvisos(data.avisos || []);
     _chartPorMes = data.porMes || {};
     _heatPorDia  = data.porDia  || {};
     _chartTrimOffset = 0;
@@ -1671,6 +1732,31 @@ function renderUltimos5(items) {
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.asunto}</td>
       <td><span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span></td>
     </tr>`).join('');
+}
+
+function renderAvisos(items) {
+  const tbody  = document.getElementById('tbody-avisos');
+  const badge  = document.getElementById('ul-avisos-badge');
+  if (!items || !items.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">Sin avisos activos</td></tr>';
+    badge.style.display = 'none';
+    return;
+  }
+  badge.textContent   = items.length;
+  badge.style.display = 'inline';
+  tbody.innerHTML = items.map(r => `
+    <tr>
+      <td><span class="badge badge-${r.doc.toLowerCase()}">${r.doc}</span></td>
+      <td>${r.num}</td><td>${r.fecha}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.asunto}</td>
+    </tr>`).join('');
+}
+
+function showUlTab(tab) {
+  document.querySelectorAll('.ul-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ul-tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('ul-tab-'   + tab).classList.add('active');
+  document.getElementById('ul-panel-' + tab).classList.add('active');
 }
 
 /* ── COMUNICACIONES ── */
@@ -2289,7 +2375,7 @@ function renderTablaHitos(hitos) {
       <td>${h.nombre}</td>
       <td>${h.fechaPrev || '—'}</td>
       <td>${h.fechaReal ? _fmtDDMM(_parseISOFromDDMM(h.fechaReal)) : '—'}</td>
-      <td><span style="font-weight:600">${h.cumplido}</span></td>
+      <td>${h.cumplido === 'SI' ? '<span class="badge-cum-si">Sí</span>' : '<span class="badge-cum-no">No</span>'}</td>
       <td><span class="badge ${clase}">${label}</span></td>
       <td style="max-width:200px;white-space:normal;font-size:.8rem;color:var(--muted)">${h.observacion || ''}</td>
       <td>${acciones}</td>
@@ -2355,19 +2441,30 @@ async function guardarHito() {
   finally { spinner(false); document.getElementById('btn-guardar-hito').disabled = false; }
 }
 
-/* ── Baja hito ── */
-async function confirmarBajaHito(fila, nombre) {
-  if (!confirm(`¿Dar de baja el hito "${nombre}"? Esta acción es irreversible.`)) return;
+/* ── Baja hito — v5.0.0: modal propio reemplaza confirm() ── */
+let _bajaHitoFila = null;
+
+function confirmarBajaHito(fila, nombre) {
+  _bajaHitoFila = fila;
+  document.getElementById('modal-baja-msg').innerHTML =
+    `¿Dar de baja el hito <strong>#${fila} — ${nombre}</strong>?`;
+  abrirModal('modal-confirm-baja');
+}
+
+async function ejecutarBajaHito() {
+  if (!_bajaHitoFila) return;
+  cerrarModal('modal-confirm-baja');
   spinner(true);
   try {
     const data = await gasPost({
       action: 'desactivarHito',
       email: estado.usuario.email,
       obra: obraActual(),
-      fila: Number(fila)
+      fila: Number(_bajaHitoFila)
     });
     if (!data.ok) throw new Error(data.error);
     mostrarToast('✓ ' + data.mensaje);
+    _bajaHitoFila = null;
     await cargarHitos();
   } catch (e) { mostrarToast('⚠ Error: ' + e.message); }
   finally { spinner(false); }
