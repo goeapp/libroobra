@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_5_11.html — LibroObra V4.5.11 -->
+<!-- index_libroobra_v4_5_12.html — LibroObra V4.5.12 -->
 <!-- Cambios v4.5.3:
   a) Fix modal-hito: no cierra al clickear fuera del overlay (data-no-outside-close)
 -->
@@ -12,7 +12,7 @@
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.5.11</title>
+<title>LibroObra V4.5.12</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -584,11 +584,10 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .hi-tl-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
 .hi-tl-title  { font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
 .hi-tl-hint   { font-size:.67rem; color:var(--muted); font-style:italic; }
-#hi-tl-scroll { overflow-x:auto; overflow-y:hidden; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); padding:0; }
-#hi-tl-outer { display:flex; align-items:stretch; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); overflow:hidden; }
+#hi-tl-outer { display:flex; align-items:stretch; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); overflow:visible; }
 #hi-tl-labels { flex-shrink:0; width:48px; display:flex; flex-direction:column; justify-content:space-around; padding:32px 0 20px; border-right:1px solid var(--border); background:var(--bg); }
 .hi-tl-row-lbl { font-size:.78rem; font-weight:600; color:var(--text); text-align:center; letter-spacing:.02em; }
-#hi-tl-scroll { flex:1; overflow-x:auto; overflow-y:hidden; border:none; border-radius:0; background:var(--bg); padding:0; }
+#hi-tl-scroll { flex:1; overflow-x:auto; overflow-y:visible; border:none; border-radius:0; background:var(--bg); padding:0; }
 .hi-legend { display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; align-items:center; }
 .hi-leg-item { display:flex; align-items:center; gap:5px; font-size:.68rem; color:var(--muted); }
 .hi-leg-d { width:10px; height:10px; transform:rotate(45deg); border-radius:1px; flex-shrink:0; }
@@ -636,7 +635,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.5.11 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.5.12 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -675,7 +674,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.5.11</span>
+    <span class="hdr-version">V4.5.12</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -1139,7 +1138,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.5.11';
+const VERSION   = 'V4.5.12';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
