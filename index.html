@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_5_9.html — LibroObra V4.5.9 -->
+<!-- index_libroobra_v4_5_10.html — LibroObra V4.5.10 -->
 <!-- Cambios v4.5.3:
   a) Fix modal-hito: no cierra al clickear fuera del overlay (data-no-outside-close)
 -->
-<!-- Cambios v4.5.9:
-  a) Timeline: fix apilado — pre-calcular posiciones en un solo paso antes de dibujar conectores y círculos
-  b) Timeline: colores cumplido en fecha #22c55e (verde llamativo) / cumplido con desfase #0F6E56 (verde oscuro)
+<!-- Cambios v4.5.10:
+  a) Timeline: fix definitivo apilado — fechaSet usa h.fechaReal directo como clave (elimina clave corrupta DD/MM/DD/MM/YYYY)
+  b) Export Excel: datos limpios desde rowsCom (sin HTML) filtrados por IDs visibles en DataTable
+  c) Export Excel: nombre archivo {obra}_Comunicaciones_{timestamp}.xlsx
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.5.9</title>
+<title>LibroObra V4.5.10</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -635,7 +636,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.5.9 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.5.10 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -674,7 +675,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.5.9</span>
+    <span class="hdr-version">V4.5.10</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -1138,7 +1139,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.5.9';
+const VERSION   = 'V4.5.10';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -1793,38 +1794,43 @@ function _renderEtiq(str) {
 }
 
 function exportarExcel() {
-  if (!estado.dtCom) { mostrarToast('⚠ No hay datos para exportar'); return; }
+  const rows = estado.rowsCom;
+  if (!rows || !rows.length) { mostrarToast('⚠ No hay datos para exportar'); return; }
 
-  // Leer filas visibles en DataTable — respeta buscador + filtro tipo
-  const filasDT = estado.dtCom.rows({ search: 'applied' }).data().toArray();
-  if (!filasDT.length) { mostrarToast('⚠ No hay datos con el filtro activo'); return; }
+  // Obtener IDs de filas visibles en DataTable (respeta buscador + filtro tipo)
+  const idsVisibles = new Set(
+    estado.dtCom.rows({ search: 'applied' }).data().toArray().map(r => r[0])
+  );
+  if (!idsVisibles.size) { mostrarToast('⚠ No hay datos con el filtro activo'); return; }
 
-  // Reconstruir array de columnas desde los nodos TR del DataTable
-  // Usamos estado.rowsCom indexado por ID (col 0) para obtener los datos crudos
-  const rowsById = new Map((estado.rowsCom || []).map(r => [r[0], r]));
+  // Filtrar rowsCom crudos por IDs visibles — datos limpios, sin HTML
+  const filtradas = rows.filter(r => idsVisibles.has(r[0]));
+  if (!filtradas.length) { mostrarToast('⚠ No hay datos con el filtro activo'); return; }
 
   const headers = ['Doc','N°','Fecha','Asunto','Resumen','Etiquetas','Estado','Doc Ref','Observación','Usuario'];
-  const data = filasDT.map(r => {
-    // r es el array de datos de la fila tal como lo cargó DataTable
-    return [
-      r[2],   // Doc
-      r[3],   // Num
-      r[4],   // Fecha
-      r[5],   // Asunto
-      r[6],   // Resumen
-      r[7],   // Etiquetas
-      r[12],  // Estado
-      r[11],  // Doc Ref
-      r[10],  // Observación
-      r[14]   // Usuario
-    ];
-  });
+  const data = filtradas.map(r => [
+    r[2],   // Doc
+    r[3],   // Num
+    r[4],   // Fecha
+    r[5],   // Asunto
+    r[6],   // Resumen
+    r[7],   // Etiquetas
+    r[12],  // Estado
+    r[11],  // Doc Ref
+    r[10],  // Observación
+    r[14]   // Usuario
+  ]);
+
+  // Nombre archivo: {obra}_Comunicaciones_{timestamp}.xlsx
+  const ahora = new Date();
+  const ts = `${ahora.getFullYear()}${_p2(ahora.getMonth()+1)}${_p2(ahora.getDate())}_${_p2(ahora.getHours())}${_p2(ahora.getMinutes())}${_p2(ahora.getSeconds())}`;
+  const nombreArchivo = `${obraActual()}_Comunicaciones_${ts}.xlsx`;
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
   ws['!cols'] = [6,8,12,40,30,30,10,15,30,25].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Comunicaciones');
-  XLSX.writeFile(wb, 'LibroObra_Comunicaciones.xlsx');
+  XLSX.writeFile(wb, nombreArchivo);
 }
 
 /* ── MODAL EDITAR ── */
@@ -2062,13 +2068,8 @@ function renderTimelineHitos(hitos) {
   // ── Recopilar todas las fechas únicas (prev + real) → columnas ──
   const fechaSet = new Map(); // "DD/MM/YYYY" → Date
   hitos.forEach(h => {
-    const kP = h.fechaPrev;
-    const kR = h.fechaReal ? _fmtDDMM(_parseISOFromDDMM(h.fechaReal)) + '/' + h.fechaReal.split('/')[2] : null;
-    if (kP) { const d = _parseISOFromDDMM(kP); if (d) fechaSet.set(kP, d); }
-    if (h.fechaReal) {
-      const dR = _parseISOFromDDMM(h.fechaReal);
-      if (dR) fechaSet.set(h.fechaReal, dR);
-    }
+    if (h.fechaPrev) { const d = _parseISOFromDDMM(h.fechaPrev); if (d) fechaSet.set(h.fechaPrev, d); }
+    if (h.fechaReal) { const d = _parseISOFromDDMM(h.fechaReal); if (d) fechaSet.set(h.fechaReal, d); }
   });
   const columnas = [...fechaSet.entries()].sort((a, b) => a[1] - b[1]); // [[key, Date], ...]
   const colIdx   = new Map(columnas.map(([key], i) => [key, i]));
