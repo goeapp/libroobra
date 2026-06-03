@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_5_8.html — LibroObra V4.5.8 -->
+<!-- index_libroobra_v4_5_9.html — LibroObra V4.5.9 -->
 <!-- Cambios v4.5.3:
   a) Fix modal-hito: no cierra al clickear fuera del overlay (data-no-outside-close)
 -->
-<!-- Cambios v4.5.8:
-  a) Comunicaciones: DataTable pageLength 25 → 15
-  b) Comunicaciones: exportarExcel respeta filtro activo DataTable (buscador + tipo)
-  c) Dashboard: gráfico Documentos Registrados default trimestre
+<!-- Cambios v4.5.9:
+  a) Timeline: fix apilado — pre-calcular posiciones en un solo paso antes de dibujar conectores y círculos
+  b) Timeline: colores cumplido en fecha #22c55e (verde llamativo) / cumplido con desfase #0F6E56 (verde oscuro)
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.5.8</title>
+<title>LibroObra V4.5.9</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -636,7 +635,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.5.8 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.5.9 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -675,7 +674,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.5.8</span>
+    <span class="hdr-version">V4.5.9</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -842,10 +841,10 @@ textarea.form-control { resize: vertical; min-height: 66px; }
               <svg id="hi-timeline-svg" height="130" style="display:block"></svg>
             </div>
           </div>
-            <div class="hi-legend">
+              <div class="hi-legend">
               <div class="hi-leg-item"><div class="hi-leg-d" style="background:#B4B2A9"></div>Prevista / Futuro</div>
-              <div class="hi-leg-item"><div class="hi-leg-d" style="background:#0F6E56"></div>Cumplido en fecha</div>
-              <div class="hi-leg-item"><div class="hi-leg-d" style="background:#EF9F27"></div>Cumplido con desfase</div>
+              <div class="hi-leg-item"><div class="hi-leg-d" style="background:#22c55e"></div>Cumplido en fecha</div>
+              <div class="hi-leg-item"><div class="hi-leg-d" style="background:#0F6E56"></div>Cumplido con desfase</div>
               <div class="hi-leg-item"><div class="hi-leg-d" style="background:#A32D2D"></div>Vencido</div>
               <div class="hi-leg-item"><div class="hi-leg-d" style="background:#185FA5"></div>Próximo</div>
               <div class="hi-leg-item"><div style="width:10px;height:2px;background:#0ea5e9;border-radius:1px"></div>Hoy</div>
@@ -1139,7 +1138,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.5.8';
+const VERSION   = 'V4.5.9';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -2132,27 +2131,30 @@ function renderTimelineHitos(hitos) {
     }
   }
 
-  // ── Agrupar por fechaPrev para apilado en fila Prev ──
-  const stackPrevIdx = new Map(); // fechaPrev → contador de stack
-  const stackRealIdx = new Map(); // fechaReal → contador de stack
-
-  // Ordenar hitos por fecha prevista para apilado consistente
+  // ── Ordenar hitos por fecha prevista + orden para apilado consistente ──
   const hitosOrd = [...hitos].sort((a, b) => {
     const pa = _parseISOFromDDMM(a.fechaPrev) || new Date(0);
     const pb = _parseISOFromDDMM(b.fechaPrev) || new Date(0);
     return pa - pb || a.orden - b.orden;
   });
 
-  // Primero dibujar conectores (debajo de círculos)
-  hitosOrd.forEach(h => {
+  // ── Pre-calcular posiciones X/Y de cada hito (Prev y Real) ──
+  const stackPrevIdx = new Map(); // kP → contador
+  const stackRealIdx = new Map(); // kR → contador
+  const posiciones   = hitosOrd.map(h => {
     const kP  = h.fechaPrev || '—';
     const kR  = h.fechaReal || kP;
     const xP  = colToX(kP);
     const xR  = colToX(kR);
-    const siP = stackPrevIdx.get(kP) || 0;
+    const siP = stackPrevIdx.get(kP) || 0; stackPrevIdx.set(kP, siP + 1);
+    const siR = stackRealIdx.get(kR) || 0; stackRealIdx.set(kR, siR + 1);
     const yP  = Y_PREV_BASE + siP * STACK_GAP;
-    const yR  = Y_REAL_BASE;
+    const yR  = Y_REAL_BASE + siR * STACK_GAP;
+    return { h, kP, kR, xP, xR, yP, yR, siP };
+  });
 
+  // ── Dibujar conectores primero (debajo de círculos) ──
+  posiciones.forEach(({ xP, xR, yP, yR }) => {
     if (Math.abs(xP - xR) > 4) {
       s += `<line x1="${xP}" y1="${yP + R}" x2="${xR}" y2="${yR - R}" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="3,2"/>`;
     } else {
@@ -2160,25 +2162,8 @@ function renderTimelineHitos(hitos) {
     }
   });
 
-  // Resetear contadores para dibujar círculos
-  stackPrevIdx.clear();
-
-  hitosOrd.forEach(h => {
-    const kP  = h.fechaPrev || '—';
-    const kR  = h.fechaReal || kP;
-    const xP  = colToX(kP);
-    const xR  = colToX(kR);
-
-    // Stack prevista
-    const siP = stackPrevIdx.get(kP) || 0;
-    stackPrevIdx.set(kP, siP + 1);
-    const yP = Y_PREV_BASE + siP * STACK_GAP;
-
-    // Stack real
-    const siR = stackRealIdx.get(kR) || 0;
-    stackRealIdx.set(kR, siR + 1);
-    const yR = Y_REAL_BASE + siR * STACK_GAP;
-
+  // ── Dibujar círculos ──
+  posiciones.forEach(({ h, xP, xR, yP, yR, siP }) => {
     const prevDate     = _parseISOFromDDMM(h.fechaPrev);
     const fechaPrevFmt = h.fechaPrev || '—';
     const fechaRealFmt = h.fechaReal ? _fmtDDMM(_parseISOFromDDMM(h.fechaReal)) : '—';
@@ -2190,22 +2175,22 @@ function renderTimelineHitos(hitos) {
     let fillR = '#B4B2A9';
     if (h.cumplido === 'SI') {
       const dR = _parseISOFromDDMM(h.fechaReal);
-      fillR = (dR && prevDate && dR.getTime() === prevDate.getTime()) ? '#0F6E56' : '#EF9F27';
+      fillR = (dR && prevDate && dR.getTime() === prevDate.getTime()) ? '#22c55e' : '#0F6E56';
     } else if (prevDate && prevDate < hoy)                                          { fillR = '#A32D2D'; }
     else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime())     { fillR = '#185FA5'; }
 
-    // Nombre truncado encima del primer hito de esa columna
+    // Nombre truncado encima del primer hito de la columna Prev
     if (siP === 0) {
       const nm = h.nombre.length > 9 ? h.nombre.slice(0, 8) + '…' : h.nombre;
       s += `<text x="${xP}" y="${yP - R - 4}" font-family="DM Sans,sans-serif" font-size="8" fill="#64748b" text-anchor="middle">${nm}</text>`;
     }
 
-    // Círculo prevista — siempre gris, número blanco
+    // Círculo prevista — siempre gris
     s += `<circle cx="${xP}" cy="${yP}" r="${R}" fill="#B4B2A9"
       class="hi-tl-node" data-nombre="${nombreEsc}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
     s += `<text x="${xP}" y="${yP + fontSize/3}" font-family="DM Sans,sans-serif" font-size="${fontSize}" font-weight="600" fill="#fff" text-anchor="middle" pointer-events="none">${num}</text>`;
 
-    // Círculo real — coloreado, número blanco (o oscuro si gris)
+    // Círculo real — coloreado
     const textFillR = fillR === '#B4B2A9' ? '#475569' : '#fff';
     s += `<circle cx="${xR}" cy="${yR}" r="${R}" fill="${fillR}"
       class="hi-tl-node" data-nombre="${nombreEsc}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
