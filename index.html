@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_5_12.html — LibroObra V4.5.12 -->
+<!-- index_libroobra_v4_5_13.html — LibroObra V4.5.13 -->
 <!-- Cambios v4.5.3:
   a) Fix modal-hito: no cierra al clickear fuera del overlay (data-no-outside-close)
 -->
@@ -12,7 +12,7 @@
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.5.12</title>
+<title>LibroObra V4.5.13</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -635,7 +635,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.5.12 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.5.13 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -674,7 +674,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.5.12</span>
+    <span class="hdr-version">V4.5.13</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -1138,7 +1138,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.5.12';
+const VERSION   = 'V4.5.13';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -2054,7 +2054,7 @@ function renderTimelineHitos(hitos) {
     svg.setAttribute('width', '600');
     svg.setAttribute('height', '130');
     svg.innerHTML = '<text x="10" y="65" font-family="DM Sans,sans-serif" font-size="13" fill="#94a3b8">Sin hitos para mostrar</text>';
-    _ajustarLabelsTimeline(130);
+    _ajustarLabelsTimeline(130, 48, 106);
     return;
   }
 
@@ -2082,15 +2082,25 @@ function renderTimelineHitos(hitos) {
   // Map timestamp → índice de columna
   const tsToCol = new Map(fechasOrdenadas.map((f, i) => [f.ts, i]));
 
-  // ── Dimensiones ──
-  const SLOT_W  = 120;
-  const PAD_L   = 8;
-  const PAD_R   = 24;
-  const R       = 12;
+  // ── Dimensiones base ──
+  const SLOT_W    = 120;
+  const PAD_L     = 8;
+  const PAD_R     = 24;
+  const R         = 12;
   const STACK_GAP = 30;
-  const PAD_TOP = 30;
+  const GAP_FILAS = 44;   // separación entre última Prev y primera Real
+  const PAD_TOP   = 30;
   const Y_PREV_BASE = PAD_TOP + 18;
-  const Y_REAL_BASE = Y_PREV_BASE + 58;
+
+  // Pre-contar maxP para calcular Y_REAL_BASE dinámico
+  const _cntPrevPre = new Map();
+  hitos.forEach(h => {
+    const d = _parseISOFromDDMM(h.fechaPrev);
+    const ts = d ? d.getTime() : 0;
+    _cntPrevPre.set(ts, (_cntPrevPre.get(ts) || 0) + 1);
+  });
+  const _maxPPre   = Math.max(..._cntPrevPre.values(), 1);
+  const Y_REAL_BASE = Y_PREV_BASE + (_maxPPre - 1) * STACK_GAP + R + GAP_FILAS;
 
   function xDefecha(fechaStr) {
     if (!fechaStr) return PAD_L + SLOT_W / 2;
@@ -2213,7 +2223,7 @@ function renderTimelineHitos(hitos) {
   svg.setAttribute('width', svgW);
   svg.setAttribute('height', SVG_H);
   svg.innerHTML = s;
-  _ajustarLabelsTimeline(SVG_H);
+  _ajustarLabelsTimeline(SVG_H, Y_PREV_BASE, Y_REAL_BASE);
 
   // Tooltip
   const tooltip = document.getElementById('hi-tl-tooltip');
@@ -2232,17 +2242,11 @@ function renderTimelineHitos(hitos) {
 }
 
 /* ── Sincronizar altura labels con SVG ── */
-function _ajustarLabelsTimeline(svgH) {
-  const outer  = document.getElementById('hi-tl-outer');
+function _ajustarLabelsTimeline(svgH, yPrev, yReal) {
   const labels = document.getElementById('hi-tl-labels');
-  if (!labels || !outer) return;
-  // Calcular Y de cada fila relativo al SVG para posicionar los labels
-  // PAD_TOP=30, Y_PREV_BASE=48, Y_REAL_BASE=106 (valores de renderTimelineHitos)
-  const PAD_TOP      = 30;
-  const Y_PREV_BASE  = PAD_TOP + 18;
-  const Y_REAL_BASE  = Y_PREV_BASE + 58;
-  const pctPrev = (Y_PREV_BASE / svgH) * 100;
-  const pctReal = (Y_REAL_BASE / svgH) * 100;
+  if (!labels) return;
+  const pctPrev = (yPrev / svgH) * 100;
+  const pctReal = (yReal / svgH) * 100;
   labels.innerHTML = `
     <span class="hi-tl-row-lbl" style="position:absolute;top:${pctPrev}%;transform:translateY(-50%)">Prev.</span>
     <span class="hi-tl-row-lbl" style="position:absolute;top:${pctReal}%;transform:translateY(-50%)">Real</span>`;
