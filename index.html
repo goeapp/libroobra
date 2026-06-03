@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v5_0_0.html — LibroObra V5.0.0 -->
+<!-- index_libroobra_v5_0_1.html — LibroObra V5.0.1 -->
+<!-- Cambios v5.0.1:
+  a) DataTables: font-family system-ui aplicado con !important en todos los elementos
+-->
 <!-- Cambios v5.0.0:
   a) Favicon SVG inline
   b) Dashboard: stat-card "Documentos en Aviso" (5ª tarjeta)
@@ -19,7 +22,7 @@
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V5.0.0</title>
+<title>LibroObra V5.0.1</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f172a'/%3E%3Ccircle cx='9' cy='16' r='3.5' fill='%23d97706'/%3E%3Ctext x='14' y='21' font-family='Arial Black,sans-serif' font-size='13' font-weight='900' fill='%23d97706'%3ELO%3C/text%3E%3C/svg%3E">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -259,6 +262,15 @@ a { color: inherit; text-decoration: none; }
 /* ══════════════════════════════════════════════
    DATATABLES — override ancho completo + estilo MdT
 ══════════════════════════════════════════════ */
+
+/* v5.0.1 — fuente sistema en todos los elementos de DataTables */
+.dataTables_wrapper,
+.dataTables_wrapper *,
+table.dataTable,
+table.dataTable * {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
 .dt-wrap {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow);
@@ -657,7 +669,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V5.0.0 · Registro de comunicaciones</div>
+    <div class="login-sub">V5.0.1 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -696,7 +708,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V5.0.0</span>
+    <span class="hdr-version">V5.0.1</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -1196,7 +1208,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V5.0.0';
+const VERSION   = 'V5.0.1';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
