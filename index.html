@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v4_5_2.html — LibroObra V4.5.2 -->
-<!-- Cambios v4.5:
-  a) Nueva sección "Hitos" — KPIs / Timeline SVG panzoom / DataTable / Modal CRUD
-  b) PDF exportable de Hitos (jsPDF + html2canvas)
-  c) Tres nuevas acciones GAS: getHitos, guardarHito, desactivarHito
-  d) CSS nuevo: KPI cards, timeline card, badges hitos, btn-del-row
-  e) Dependencias: panzoom@9.4.3, jsPDF@2.5.1, html2canvas@1.4.1
+<!-- index_libroobra_v4_5_4.html — LibroObra V4.5.4 -->
+<!-- Cambios v4.5.3:
+  a) Fix modal-hito: no cierra al clickear fuera del overlay (data-no-outside-close)
+-->
+<!-- Cambios v4.5.4:
+  a) Header obra: prefijo "Obra", color rgba(.80), font 600 .82rem
+  b) Timeline: espaciado fijo SLOT_W=120, scroll nativo, rombos R=12, tooltip hover, línea Hoy condicional, sin panzoom
 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LibroObra V4.5.2</title>
+<title>LibroObra V4.5.4</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,6 @@
 <script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/datetime-moment.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://unpkg.com/panzoom@9.4.3/dist/panzoom.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -143,7 +142,8 @@ a { color: inherit; text-decoration: none; }
 .hdr-nav-btn:hover  { background: rgba(255,255,255,.08); color: #fff; }
 .hdr-nav-btn.active { background: rgba(255,255,255,.12); color: #fff; font-weight: 600; }
 .hdr-sep  { flex: 1; }
-.hdr-obra { font-size: .72rem; color: rgba(255,255,255,.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.hdr-obra { font-size: .82rem; font-weight: 600; color: rgba(255,255,255,.80); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+.hdr-obra-prefix { font-size: .68rem; font-weight: 400; color: rgba(255,255,255,.40); text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
 .hdr-name { font-size: .78rem; color: rgba(255,255,255,.55); white-space: nowrap; }
 .hdr-version { font-size: .65rem; color: rgba(255,255,255,.25); margin-left: 4px; }
 .btn-salir {
@@ -583,14 +583,19 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .hi-tl-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
 .hi-tl-title  { font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
 .hi-tl-hint   { font-size:.67rem; color:var(--muted); font-style:italic; }
-#hi-panzoom-wrap { overflow:hidden; position:relative; height:140px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); cursor:grab; }
-#hi-panzoom-wrap:active { cursor:grabbing; }
-#hi-panzoom-inner { display:inline-block; padding:10px 40px 10px 60px; transform-origin:0 0; min-width:100%; }
-.hi-row-labels { position:absolute; left:8px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:46px; pointer-events:none; z-index:5; }
-.hi-row-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+#hi-tl-scroll { overflow-x:auto; overflow-y:hidden; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); padding:0; }
 .hi-legend { display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; align-items:center; }
 .hi-leg-item { display:flex; align-items:center; gap:5px; font-size:.68rem; color:var(--muted); }
 .hi-leg-d { width:10px; height:10px; transform:rotate(45deg); border-radius:1px; flex-shrink:0; }
+/* Tooltip SVG nativo */
+.hi-tl-tooltip {
+  position:fixed; pointer-events:none; z-index:600;
+  background:var(--accent2); color:#fff;
+  font-family:'DM Sans',sans-serif; font-size:.75rem; font-weight:500;
+  padding:5px 10px; border-radius:var(--radius-sm);
+  white-space:nowrap; opacity:0; transition:opacity .15s;
+  box-shadow:var(--shadow-md);
+}
 
 /* ══════════════════════════════════════════════
    HITOS — BADGES Y TABLA
@@ -611,7 +616,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
   <div class="login-box">
     <span class="login-emoji">📋</span>
     <div class="login-logo">LibroObra</div>
-    <div class="login-sub">V4.5.2 · Registro de comunicaciones</div>
+    <div class="login-sub">V4.5.4 · Registro de comunicaciones</div>
     <div class="login-title">Accedé con tu cuenta Google</div>
     <div class="login-desc">Usá tu cuenta corporativa.<br>El acceso es gestionado por el administrador.</div>
     <div id="g-btn-wrap" style="margin-bottom:16px"></div>
@@ -650,7 +655,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
     <div class="hdr-sep"></div>
     <span class="hdr-obra" id="hdr-obra"></span>
     <span class="hdr-name" id="hdr-name"></span>
-    <span class="hdr-version">V4.5.2</span>
+    <span class="hdr-version">V4.5.4</span>
     <button class="btn-salir" onclick="cerrarSesion()">Salir</button>
   </div>
 
@@ -794,16 +799,10 @@ textarea.form-control { resize: vertical; min-height: 66px; }
       <div class="hi-tl-card">
         <div class="hi-tl-header">
           <span class="hi-tl-title">Línea de tiempo</span>
-          <span class="hi-tl-hint">Drag para navegar · Rueda para zoom · Doble click = reset</span>
+          <span class="hi-tl-hint">Scroll horizontal para navegar</span>
         </div>
-        <div id="hi-panzoom-wrap">
-          <div class="hi-row-labels">
-            <span class="hi-row-lbl">Prevista</span>
-            <span class="hi-row-lbl">Real</span>
-          </div>
-          <div id="hi-panzoom-inner">
-            <svg id="hi-timeline-svg" height="110" style="display:block;min-width:600px"></svg>
-          </div>
+        <div id="hi-tl-scroll">
+          <svg id="hi-timeline-svg" height="130" style="display:block"></svg>
         </div>
         <div class="hi-legend">
           <div class="hi-leg-item"><div class="hi-leg-d" style="background:#B4B2A9"></div>Prevista</div>
@@ -1007,7 +1006,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 </div>
 
 <!-- MODAL HITO -->
-<div class="modal-overlay" id="modal-hito">
+<div class="modal-overlay" id="modal-hito" data-no-outside-close>
   <div class="modal" style="max-width:520px">
     <div class="modal-header">
       <span class="modal-title" id="modal-hito-titulo">Nuevo hito</span>
@@ -1065,6 +1064,7 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 <div id="spinner"><div class="spinner-ring"></div></div>
 <div id="toast"></div>
 <div id="hm-tooltip"></div>
+<div id="hi-tl-tooltip" class="hi-tl-tooltip"></div>
 
 <!-- MODAL HISTORIAL (fix b) -->
 <div class="modal-overlay" id="modal-historial">
@@ -1094,7 +1094,7 @@ const ICO = {
 /* ── CONFIGURACIÓN ── */
 const GAS_URL   = 'https://script.google.com/macros/s/AKfycbwj3as7wBfTVF9MSjcXMxw92JxvkSN8vtx_afRqUMlXYKDBpgq6rcuqpAVC5hD0fxvo_w/exec';
 const CLIENT_ID = '985022387906-5h3qtmq6jifdl5jdv77o4amf9nb3mcdn.apps.googleusercontent.com';
-const VERSION   = 'V4.5.2';
+const VERSION   = 'V4.5.4';
 
 /* ── ESTADO GLOBAL ── */
 const estado = {
@@ -1110,7 +1110,6 @@ const estado = {
   filtroCom       : 'todos',
   rowsCom         : [],   // rows crudos para exportar
   hitosData       : [],
-  _panzoomHitos   : null,
 };
 
 /* ── GAS POST ── */
@@ -1199,7 +1198,7 @@ async function iniciarApp() {
   document.getElementById('app').style.display           = 'flex';
 
   document.getElementById('hdr-name').textContent = u.nombre;
-  document.getElementById('hdr-obra').textContent = u.obra + ' · ' + u.obraDesc;
+  document.getElementById('hdr-obra').innerHTML = `<span class="hdr-obra-prefix">Obra</span>${u.obra} · ${u.obraDesc}`;
 
   // Botón "Nueva" en Comunicaciones — visible solo para usuario
   if (u.perfil === 'usuario') {
@@ -1976,16 +1975,13 @@ function renderKPIsHitos(hitos) {
 /* ── Timeline SVG ── */
 function renderTimelineHitos(hitos) {
   const svg = document.getElementById('hi-timeline-svg');
-  const wrap = document.getElementById('hi-panzoom-wrap');
 
   if (!hitos.length) {
-    svg.innerHTML = '<text x="20" y="55" font-family="DM Sans,sans-serif" font-size="13" fill="#94a3b8">Sin hitos para mostrar</text>';
     svg.setAttribute('width', '600');
+    svg.setAttribute('height', '130');
+    svg.innerHTML = '<text x="20" y="65" font-family="DM Sans,sans-serif" font-size="13" fill="#94a3b8">Sin hitos para mostrar</text>';
     return;
   }
-
-  // Destruir panzoom anterior
-  if (estado._panzoomHitos) { try { estado._panzoomHitos.dispose(); } catch(e){} estado._panzoomHitos = null; }
 
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
 
@@ -1996,101 +1992,107 @@ function renderTimelineHitos(hitos) {
     if (p && p >= hoy && (!nextDate || p < nextDate)) nextDate = p;
   });
 
-  // Rango de fechas (todas las previstas + reales)
-  const todasFechas = [];
-  hitos.forEach(h => {
-    const p = _parseISOFromDDMM(h.fechaPrev);
-    const r = _parseISOFromDDMM(h.fechaReal);
-    if (p) todasFechas.push(p);
-    if (r) todasFechas.push(r);
+  // Ordenar hitos por fecha prevista para el espaciado
+  const hitosOrdenados = [...hitos].sort((a, b) => {
+    const pa = _parseISOFromDDMM(a.fechaPrev) || new Date(0);
+    const pb = _parseISOFromDDMM(b.fechaPrev) || new Date(0);
+    return pa - pb;
   });
-  todasFechas.push(hoy);
 
-  const minDate = new Date(Math.min(...todasFechas.map(d => d.getTime())));
-  const maxDate = new Date(Math.max(...todasFechas.map(d => d.getTime())));
-  // Padding de 30 días a cada lado
-  minDate.setDate(minDate.getDate() - 30);
-  maxDate.setDate(maxDate.getDate() + 30);
+  // Dimensiones — espaciado fijo
+  const SLOT_W  = 120;   // px entre rombos
+  const PAD_L   = 72;    // margen izquierdo (labels de fila)
+  const PAD_R   = 40;
+  const Y_PREV  = 42;    // fila prevista
+  const Y_REAL  = 90;    // fila real
+  const R       = 12;    // medio-lado del rombo
+  const SVG_H   = 130;
 
-  const totalDias = (maxDate - minDate) / (1000 * 60 * 60 * 24);
-  const PX_PER_DAY = 14;
-  const svgW = Math.max(600, totalDias * PX_PER_DAY + 80);
-  const Y_PREV = 35;   // fila prevista (rombos)
-  const Y_REAL = 80;   // fila real (rombos)
-  const R = 7;         // medio-lado del rombo
+  const n    = hitosOrdenados.length;
+  const svgW = PAD_L + n * SLOT_W + PAD_R;
 
-  function dateToX(d) {
-    return 40 + ((d - minDate) / (1000 * 60 * 60 * 24)) * PX_PER_DAY;
-  }
+  // Calcular X por índice
+  function idxToX(i) { return PAD_L + i * SLOT_W + SLOT_W / 2; }
 
   let svgContent = '';
 
-  // Línea base prevista
-  svgContent += `<line x1="40" y1="${Y_PREV}" x2="${svgW - 40}" y2="${Y_PREV}" stroke="#e2e8f0" stroke-width="1.5"/>`;
-  // Línea base real
-  svgContent += `<line x1="40" y1="${Y_REAL}" x2="${svgW - 40}" y2="${Y_REAL}" stroke="#e2e8f0" stroke-width="1.5"/>`;
+  // Labels de fila (fijas a la izquierda)
+  svgContent += `<text x="8" y="${Y_PREV + 4}" font-family="DM Sans,sans-serif" font-size="9" fill="#94a3b8" text-transform="uppercase" letter-spacing="0.5">Prev.</text>`;
+  svgContent += `<text x="8" y="${Y_REAL + 4}" font-family="DM Sans,sans-serif" font-size="9" fill="#94a3b8" text-transform="uppercase" letter-spacing="0.5">Real</text>`;
 
-  // Meses en eje X (sobre fila prevista)
-  const mesLabels = new Set();
-  let cur = new Date(minDate);
-  while (cur <= maxDate) {
-    const mesKey = `${cur.getFullYear()}-${cur.getMonth()}`;
-    if (!mesLabels.has(mesKey)) {
-      mesLabels.add(mesKey);
-      const x = dateToX(new Date(cur.getFullYear(), cur.getMonth(), 1));
-      const label = cur.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
-      svgContent += `<text x="${x}" y="14" font-family="DM Sans,sans-serif" font-size="9" fill="#94a3b8" text-anchor="middle">${label}</text>`;
-      svgContent += `<line x1="${x}" y1="17" x2="${x}" y2="${Y_PREV - 10}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="2,2"/>`;
+  // Líneas base
+  svgContent += `<line x1="${PAD_L - 10}" y1="${Y_PREV}" x2="${svgW - PAD_R}" y2="${Y_PREV}" stroke="#e2e8f0" stroke-width="1.5"/>`;
+  svgContent += `<line x1="${PAD_L - 10}" y1="${Y_REAL}" x2="${svgW - PAD_R}" y2="${Y_REAL}" stroke="#e2e8f0" stroke-width="1.5"/>`;
+
+  // Línea Hoy — solo si está en rango de fechas previstas
+  const fechasPrev = hitosOrdenados.map(h => _parseISOFromDDMM(h.fechaPrev)).filter(Boolean);
+  if (fechasPrev.length) {
+    const primeraPrev = new Date(Math.min(...fechasPrev.map(d => d.getTime())));
+    const ultimaPrev  = new Date(Math.max(...fechasPrev.map(d => d.getTime())));
+    if (hoy >= primeraPrev && hoy <= ultimaPrev) {
+      // Interpolar posición X de hoy entre los hitos por fecha
+      const rangoMs = ultimaPrev - primeraPrev;
+      const fraccion = rangoMs > 0 ? (hoy - primeraPrev) / rangoMs : 0;
+      const xHoy = PAD_L + fraccion * (n - 1) * SLOT_W + SLOT_W / 2;
+      svgContent += `<line x1="${xHoy}" y1="20" x2="${xHoy}" y2="${SVG_H - 10}" stroke="#d97706" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+      svgContent += `<text x="${xHoy}" y="14" font-family="DM Sans,sans-serif" font-size="8" fill="#d97706" text-anchor="middle">Hoy</text>`;
     }
-    cur.setDate(cur.getDate() + 7);
   }
 
-  // Línea "Hoy"
-  const xHoy = dateToX(hoy);
-  svgContent += `<line x1="${xHoy}" y1="18" x2="${xHoy}" y2="100" stroke="#d97706" stroke-width="1.5" stroke-dasharray="3,2"/>`;
-  svgContent += `<text x="${xHoy}" y="108" font-family="DM Sans,sans-serif" font-size="8" fill="#d97706" text-anchor="middle">Hoy</text>`;
-
   // Hitos
-  hitos.forEach(h => {
-    const xP = dateToX(_parseISOFromDDMM(h.fechaPrev) || hoy);
-    const fechaReal = _parseISOFromDDMM(h.fechaReal) || _parseISOFromDDMM(h.fechaPrev) || hoy;
-    const xR = dateToX(fechaReal);
+  hitosOrdenados.forEach((h, i) => {
+    const xP = idxToX(i);
+    // xR: misma columna si no hay fecha real diferente — en timeline fijo no hay desplazamiento horizontal por fecha real
+    const xR = xP;
 
-    // Conector prevista→real
-    if (Math.abs(xP - xR) > 2) {
-      svgContent += `<line x1="${xP}" y1="${Y_PREV}" x2="${xR}" y2="${Y_REAL}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2"/>`;
-    } else {
-      svgContent += `<line x1="${xP}" y1="${Y_PREV + R}" x2="${xP}" y2="${Y_REAL - R}" stroke="#cbd5e1" stroke-width="1"/>`;
-    }
+    const prevDate = _parseISOFromDDMM(h.fechaPrev);
+    const fechaPrevFmt = h.fechaPrev || '—';
+    const fechaRealFmt = h.fechaReal ? _fmtDDMM(_parseISOFromDDMM(h.fechaReal)) : '—';
+
+    // Estado rombo real
+    let fillR = 'transparent', strokeR = '#B4B2A9', swR = 1.5;
+    if (h.cumplido === 'SI')                                                         { fillR = '#0F6E56'; strokeR = '#0F6E56'; swR = 0; }
+    else if (prevDate && prevDate < hoy)                                             { fillR = '#A32D2D'; strokeR = '#A32D2D'; swR = 0; }
+    else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime())      { fillR = '#185FA5'; strokeR = '#185FA5'; swR = 0; }
+
+    // Conector vertical prevista→real
+    svgContent += `<line x1="${xP}" y1="${Y_PREV + R}" x2="${xP}" y2="${Y_REAL - R}" stroke="#cbd5e1" stroke-width="1"/>`;
 
     // Rombo prevista — siempre gris
-    svgContent += `<polygon points="${xP},${Y_PREV - R} ${xP + R},${Y_PREV} ${xP},${Y_PREV + R} ${xP - R},${Y_PREV}" fill="#B4B2A9"/>`;
+    svgContent += `<polygon points="${xP},${Y_PREV - R} ${xP + R},${Y_PREV} ${xP},${Y_PREV + R} ${xP - R},${Y_PREV}" fill="#B4B2A9"
+      class="hi-tl-rhombus" data-nombre="${h.nombre.replace(/"/g,'&quot;')}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
 
     // Rombo real — coloreado por estado
-    let fillR = 'transparent', strokeR = '#B4B2A9', swR = 1.5;
-    const prevDate = _parseISOFromDDMM(h.fechaPrev);
-    if (h.cumplido === 'SI') { fillR = '#0F6E56'; strokeR = '#0F6E56'; swR = 0; }
-    else if (prevDate && prevDate < hoy) { fillR = '#A32D2D'; strokeR = '#A32D2D'; swR = 0; }
-    else if (nextDate && prevDate && prevDate.getTime() === nextDate.getTime()) { fillR = '#185FA5'; strokeR = '#185FA5'; swR = 0; }
-    svgContent += `<polygon points="${xR},${Y_REAL - R} ${xR + R},${Y_REAL} ${xR},${Y_REAL + R} ${xR - R},${Y_REAL}" fill="${fillR}" stroke="${strokeR}" stroke-width="${swR}"/>`;
+    svgContent += `<polygon points="${xR},${Y_REAL - R} ${xR + R},${Y_REAL} ${xR},${Y_REAL + R} ${xR - R},${Y_REAL}" fill="${fillR}" stroke="${strokeR}" stroke-width="${swR}"
+      class="hi-tl-rhombus" data-nombre="${h.nombre.replace(/"/g,'&quot;')}" data-prev="${fechaPrevFmt}" data-real="${fechaRealFmt}"/>`;
 
-    // Label nombre
-    svgContent += `<text x="${xP}" y="${Y_PREV - R - 3}" font-family="DM Sans,sans-serif" font-size="9" fill="#475569" text-anchor="middle">${h.nombre.length > 12 ? h.nombre.slice(0, 11) + '…' : h.nombre}</text>`;
+    // Número de orden debajo de fila real
+    svgContent += `<text x="${xP}" y="${Y_REAL + R + 12}" font-family="DM Sans,sans-serif" font-size="9" fill="#94a3b8" text-anchor="middle">${h.orden}</text>`;
   });
 
   svg.setAttribute('width', svgW);
-  svg.setAttribute('height', '115');
+  svg.setAttribute('height', SVG_H);
   svg.innerHTML = svgContent;
 
-  // Inicializar panzoom — doble click reset
-  const inner = document.getElementById('hi-panzoom-inner');
-  const pz = panzoom(inner, {
-    maxZoom: 4, minZoom: 0.5,
-    bounds: false, boundsPadding: 0.1,
-    zoomDoubleClickSpeed: 1
+  // Tooltip hover sobre rombos
+  const tooltip = document.getElementById('hi-tl-tooltip');
+  svg.querySelectorAll('.hi-tl-rhombus').forEach(el => {
+    el.style.cursor = 'default';
+    el.addEventListener('mouseenter', e => {
+      const nombre = el.dataset.nombre;
+      const prev   = el.dataset.prev;
+      const real   = el.dataset.real;
+      tooltip.innerHTML = `<strong>${nombre}</strong><br>Prev: ${prev} · Real: ${real}`;
+      tooltip.style.opacity = '1';
+    });
+    el.addEventListener('mousemove', e => {
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top  = (e.clientY - 32) + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
   });
-  inner.addEventListener('dblclick', () => pz.moveTo(0, 0) && pz.zoomTo(0, 0, 1));
-  estado._panzoomHitos = pz;
 }
 
 /* ── Tabla DataTable ── */
@@ -2455,6 +2457,7 @@ function showSubtab(id) {
 function abrirModal(id)  { document.getElementById(id).classList.add('open'); }
 function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(el => {
+  if (el.hasAttribute('data-no-outside-close')) return;
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
 
