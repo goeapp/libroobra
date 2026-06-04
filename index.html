@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- index_libroobra_v5_0_1.html — LibroObra V5.0.1 -->
+<!-- index_libroobra_v5_1_0.html — LibroObra V5.1.0 -->
+<!-- Cambios v5.1.0:
+  a) Dashboard: Treemap de etiquetas con filtro por tipo (Todos/OS/NP/RM) — D3.js v7
+-->
 <!-- Cambios v5.0.1:
   a) DataTables: font-family system-ui aplicado con !important en todos los elementos
 -->
@@ -39,6 +42,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
@@ -660,7 +664,20 @@ textarea.form-control { resize: vertical; min-height: 66px; }
 .ul-tab-btn.active { color:var(--accent2); border-bottom-color:var(--accent); }
 .ul-tab-panel { display:none; }
 .ul-tab-panel.active { display:block; }
-</style>
+
+/* TREEMAP ETIQUETAS — v5.1.0 */
+.treemap-card { margin-top:18px; }
+.treemap-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.treemap-header .card-title { margin-bottom:0; }
+.treemap-filters { display:flex; gap:6px; }
+.treemap-wrap { width:100%; height:260px; position:relative; }
+.treemap-wrap svg { width:100%; height:100%; display:block; }
+.treemap-cell { cursor:default; }
+.treemap-cell rect { rx:4; ry:4; stroke:#fff; stroke-width:2px; transition:opacity .15s; }
+.treemap-cell text { font-family:'DM Sans',system-ui,sans-serif; fill:#fff; pointer-events:none; }
+.treemap-label-name { font-size:.72rem; font-weight:700; }
+.treemap-label-count { font-size:.65rem; font-weight:400; opacity:.85; }
+.treemap-empty { display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-size:.82rem; }
 </head>
 <body>
 
@@ -790,6 +807,23 @@ textarea.form-control { resize: vertical; min-height: 66px; }
           </div>
         </div>
       </div>
+
+      <!-- TREEMAP ETIQUETAS — v5.1.0 -->
+      <div class="card treemap-card">
+        <div class="treemap-header">
+          <div class="card-title">Etiquetas</div>
+          <div class="treemap-filters">
+            <button class="hm-btn active" id="tm-todos" onclick="setTreemapFiltro('todos')">Todos</button>
+            <button class="hm-btn" id="tm-os" onclick="setTreemapFiltro('os')">OS</button>
+            <button class="hm-btn" id="tm-np" onclick="setTreemapFiltro('np')">NP</button>
+            <button class="hm-btn" id="tm-rm" onclick="setTreemapFiltro('rm')">RM</button>
+          </div>
+        </div>
+        <div class="treemap-wrap" id="treemap-wrap">
+          <div class="treemap-empty">Sin datos</div>
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
         <div class="card">
           <div class="heatmap-header">
@@ -1389,8 +1423,10 @@ async function cargarDashboard() {
     _chartPorMes = data.porMes || {};
     _heatPorDia  = data.porDia  || {};
     _chartTrimOffset = 0;
+    _treemapData = data.porEtiqueta || {};  // v5.1.0
     renderHeatmap();
     setChartMode('trim');
+    renderTreemap();  // v5.1.0
     // Próximo hito
     _renderDashProximoHito(dataHitos.ok ? (dataHitos.hitos || []) : []);
   } catch (e) {
@@ -1541,7 +1577,7 @@ let _heatPorDia = {}, _hmMode = 'todos';
 
 function setHmMode(mode) {
   _hmMode = mode;
-  document.querySelectorAll('.hm-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.heatmap-header .hm-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('hm-' + mode).classList.add('active');
   renderHeatmap();
 }
@@ -1744,6 +1780,119 @@ function renderUltimos5(items) {
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.asunto}</td>
       <td><span class="badge badge-${r.estado.toLowerCase()}">${r.estado}</span></td>
     </tr>`).join('');
+}
+
+/* ── TREEMAP ETIQUETAS — v5.1.0 ── */
+let _treemapData = {}, _tmFiltro = 'todos';
+
+// Paleta de 12 colores distinguibles para etiquetas
+const _tmPaleta = [
+  '#4f86c6','#e07b54','#5ab068','#c4703a','#7e6bbf',
+  '#d4a94b','#4ba8b0','#b05a7a','#6b9e4f','#5e7cc4',
+  '#c4845e','#4db09a'
+];
+
+function setTreemapFiltro(filtro) {
+  _tmFiltro = filtro;
+  document.querySelectorAll('.treemap-filters .hm-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tm-' + filtro).classList.add('active');
+  renderTreemap();
+}
+
+function renderTreemap() {
+  const wrap = document.getElementById('treemap-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  if (!_treemapData || !Object.keys(_treemapData).length) {
+    wrap.innerHTML = '<div class="treemap-empty">Sin datos de etiquetas</div>';
+    return;
+  }
+
+  // Construir array de nodos con valor según filtro activo
+  const campo = _tmFiltro === 'todos' ? 'total'
+              : _tmFiltro === 'os'    ? 'OS'
+              : _tmFiltro === 'np'    ? 'NP'
+              :                         'RM';
+
+  const nodos = Object.entries(_treemapData)
+    .map(([nombre, v], i) => ({ nombre, valor: v[campo] || 0, colorIdx: i }))
+    .filter(d => d.valor > 0)
+    .sort((a, b) => b.valor - a.valor);
+
+  if (!nodos.length) {
+    wrap.innerHTML = '<div class="treemap-empty">Sin registros para este filtro</div>';
+    return;
+  }
+
+  const W = wrap.clientWidth  || 600;
+  const H = wrap.clientHeight || 260;
+
+  const svg = d3.select(wrap).append('svg')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Estructura D3 treemap
+  const root = d3.hierarchy({ children: nodos })
+    .sum(d => d.valor)
+    .sort((a, b) => b.value - a.value);
+
+  d3.treemap()
+    .size([W, H])
+    .padding(3)
+    .round(true)(root);
+
+  const celda = svg.selectAll('g')
+    .data(root.leaves())
+    .join('g')
+      .attr('class', 'treemap-cell')
+      .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+  // Rectángulos
+  celda.append('rect')
+    .attr('width',  d => Math.max(0, d.x1 - d.x0))
+    .attr('height', d => Math.max(0, d.y1 - d.y0))
+    .attr('rx', 4).attr('ry', 4)
+    .attr('fill', d => _tmPaleta[d.data.colorIdx % _tmPaleta.length])
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 2);
+
+  // Labels — solo si el rect tiene espacio suficiente
+  celda.each(function(d) {
+    const cw = d.x1 - d.x0;
+    const ch = d.y1 - d.y0;
+    if (cw < 36 || ch < 22) return; // rect demasiado chico, sin label
+
+    const g = d3.select(this);
+    const px = 5, py = 5;
+
+    // Nombre — truncado si es necesario
+    g.append('text')
+      .attr('class', 'treemap-label-name')
+      .attr('x', px).attr('y', py + 10)
+      .attr('font-size', '11px')
+      .attr('font-weight', '700')
+      .attr('fill', '#fff')
+      .attr('font-family', "'DM Sans', system-ui, sans-serif")
+      .text(() => {
+        const maxChars = Math.floor(cw / 6.5);
+        return d.data.nombre.length > maxChars
+          ? d.data.nombre.slice(0, maxChars - 1) + '…'
+          : d.data.nombre;
+      });
+
+    // Número — solo si hay altura suficiente
+    if (ch >= 38) {
+      g.append('text')
+        .attr('class', 'treemap-label-count')
+        .attr('x', px).attr('y', py + 24)
+        .attr('font-size', '10px')
+        .attr('fill', '#fff')
+        .attr('opacity', '0.85')
+        .attr('font-family', "'DM Sans', system-ui, sans-serif")
+        .text(d.data.valor);
+    }
+  });
 }
 
 function renderAvisos(items) {
